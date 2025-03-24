@@ -60,23 +60,16 @@ bool verbose = LOG_ACTIVE;
 bool is_a_win(int _board[], int _color, int taille_x, int taille_y) {
     
     //check si le joueur a gagné en ligne (horizontalement)
-    if (_color == BLACK) {
-        for (int y = 0; y < taille_y; y++) {
-            //verifie la colonne la plus à gauche
-            if (_board[y * taille_x] == _color) {
-                return true;
-            }
+    if (_color == WHITE) {
+        for (int x = 0; x < taille_x; x++) {
+            if (_board[x] == WHITE) return true; // Ligne du haut
+        }
+    } else {
+        for (int x = 0; x < taille_x; x++) {
+            if (_board[(taille_y - 1) * taille_x + x] == BLACK) return true; // Ligne du bas
         }
     }
-    //check si l'autre joueur a gagné en ligne (horizontalement)
-    else if (_color == WHITE) {
-        for (int y = 0; y < taille_y; y++) {
-            //verifie la colonne la plus à droite
-            if (_board[y * taille_x + (taille_x - 1)] == _color) {
-                return true;
-            }
-        }
-    }
+    
     
     return false;
 }
@@ -403,6 +396,14 @@ int main(int _ac, char** _av) {
     fprintf(stderr, "usage: %s STRBOARD TURN\n", _av[0]);
     return 0;
   }
+  /*
+  int move = ids(ttt_board, turn_board, time_limit, reached_depth);
+  int from_x = move / taille_x;
+  int from_y = move % taille_x;
+  int to_x = (move + direction) / taille_x;  // direction = -1 pour Blancs, +1 pour Noirs
+  int to_y = (move + direction) % taille_x;
+  printf("%d %d %d %d\n", from_x, from_y, to_x, to_y);
+  */
   char* input_board = _av[1];
   int turn_board = WHITE;
   if(strcmp(_av[2],"@")==0) turn_board = BLACK;
