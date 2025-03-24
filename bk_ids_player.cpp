@@ -12,37 +12,41 @@
 #define EMPTY 0
 #define WHITE 1
 #define BLACK 2
-
 #define LOG_ACTIVE 0
+//taille du plateau en variables globales
+int taille_x = 6;
+int taille_y = 10;
+
 
 /*
  * breaktrough player 6*10
- * 
+ * taille_x = 6
+ * taille_y = 10
  * 
  */
 
-void init(char _strboard[6*10], int _board[6*10]) {
+void init(char _strboard[], int _board[]) {
     //board vide
-    for(int i = 0; i < 6*10; i++) {
+    for(int i = 0; i < taille_x*taille_y; i++) {
         _board[i] = EMPTY;
     }
     
     //set up BLACK (lignes du haut)
     for(int y = 0; y < 2; y++) {
-        for(int x = 0; x < 7; x++) {
-            _board[y * 6 + x] = BLACK;
+        for(int x = 0; x < taille_x; x++) {
+            _board[y * taille_x + x] = BLACK;
         }
     }
     
     //set up WHITE (lignes du bas)
-    for(int y = 4; y < 6; y++) {
-        for(int x = 0; x < 7; x++) {
-            _board[y * 6 + x] = WHITE;
+    for(int y = taille_y - 2; y < taille_y; y++) {
+        for(int x = 0; x < taille_x; x++) {
+            _board[y * taille_x + x] = WHITE;
         }
     }
     //si strboard est fourni, remplacer par ses valeurs
     if(_strboard) {
-        for(int i = 0; i < 6*10; i++) {
+        for(int i = 0; i < taille_x*taille_y; i++) {
             if(_strboard[i] == '.') _board[i] = EMPTY;
             if(_strboard[i] == 'x') _board[i] = BLACK;
             if(_strboard[i] == 'o') _board[i] = WHITE;
@@ -53,22 +57,22 @@ std::chrono::time_point<std::chrono::steady_clock> start_time;
 double time_limit;
 bool verbose = LOG_ACTIVE;
 
-bool is_a_win(int _board[6*10], int _color, int taille_plateau_x = 6, int taille_plateau_y = 10) {
+bool is_a_win(int _board[], int _color, int taille_x, int taille_y) {
     
     //check si le joueur a gagné en ligne (horizontalement)
     if (_color == BLACK) {
-        for (int y = 0; y < taille_plateau_y; y++) {
+        for (int y = 0; y < taille_y; y++) {
             //verifie la colonne la plus à gauche
-            if (_board[y * taille_plateau_x] == _color) {
+            if (_board[y * taille_x] == _color) {
                 return true;
             }
         }
     }
     //check si l'autre joueur a gagné en ligne (horizontalement)
     else if (_color == WHITE) {
-        for (int y = 0; y < taille_plateau_y; y++) {
+        for (int y = 0; y < taille_y; y++) {
             //verifie la colonne la plus à droite
-            if (_board[y * taille_plateau_x + (taille_plateau_x - 1)] == _color) {
+            if (_board[y * taille_x + (taille_x - 1)] == _color) {
                 return true;
             }
         }
@@ -91,7 +95,7 @@ bool is_time_expired() {
     return elapsed >= time_limit;
 }
 //heuristique
-double h(int _board[6*10], int _color, int taille_plateau_x = 6, int taille_plateau_y = 10) {
+double h(int _board[], int _color, int taille_plateau_x = 6, int taille_plateau_y = 10) {
     double score = 0.0;
     
     //boucle pour chaque position sur le plateau
@@ -145,162 +149,245 @@ double h(int _board[6*10], int _color, int taille_plateau_x = 6, int taille_plat
     return _color == WHITE ? score : -score;
 }
 
-double dls(int _board[9], int depth, int _color, bool& completed) {
-    if(is_time_expired()) {
+// Depth Limited Search
+double dls(int _board[], int depth, int _color, bool& completed, int taille_plateau_x = 6, int taille_plateau_y = 10) {
+    //verifie d'abord si le temps est écoulé
+    if (is_time_expired()) {
         completed = false;
-        return h(_board, _color);
+        return h(_board, _color, taille_plateau_x, taille_plateau_y);
     }
     
-    if(is_a_win(_board, _color)) return 1000.0;
-    if(is_a_win(_board, (_color == WHITE) ? BLACK : WHITE)) return -1000.0;
+    // Tester les conditions de fin
+    if (is_a_win(_board, WHITE, taille_plateau_x, taille_plateau_y)) return 1000000.0;
+    if (is_a_win(_board, BLACK, taille_plateau_x, taille_plateau_y)) return -1000000.0;
     
-    if(depth == 0) {
+    if (depth == 0) {
         completed = true;
-        return h(_board, _color);
+        return h(_board, _color, taille_plateau_x, taille_plateau_y);
     }
     
-    // Count empty squares and build moves
-    int moves[9];
+    // Générer tous les coups possibles
+    int moves[100][3]; // [indice_origine, indice_destination, capture]
     int nb_moves = 0;
-    for(int i = 0; i < 9; i++) {
-        if(_board[i] == EMPTY) {
-            moves[nb_moves++] = i;
+    
+    for (int y = 0; y < taille_plateau_y; y++) {
+        for (int x = 0; x < taille_plateau_x; x++) {
+            int idx = y * taille_plateau_x + x;
+            if (_board[idx] == _color) {
+                // Direction de déplacement selon la couleur
+                int dy = (_color == WHITE) ? -1 : 1;
+                
+                // Avancer tout droit
+                int ny = y + dy;
+                if (ny >= 0 && ny < taille_plateau_y) {
+                    int nidx = ny * taille_plateau_x + x;
+                    if (_board[nidx] == EMPTY) {
+                        moves[nb_moves][0] = idx;
+                        moves[nb_moves][1] = nidx;
+                        moves[nb_moves][2] = 0; // pas de capture
+                        nb_moves++;
+                    }
+                }
+                
+                // Capture diagonale gauche
+                if (x > 0 && ny >= 0 && ny < taille_plateau_y) {
+                    int nidx = ny * taille_plateau_x + (x-1);
+                    if (_board[nidx] != EMPTY && _board[nidx] != _color) {
+                        moves[nb_moves][0] = idx;
+                        moves[nb_moves][1] = nidx;
+                        moves[nb_moves][2] = 1; // capture
+                        nb_moves++;
+                    }
+                }
+                
+                // Capture diagonale droite
+                if (x < taille_plateau_x-1 && ny >= 0 && ny < taille_plateau_y) {
+                    int nidx = ny * taille_plateau_x + (x+1);
+                    if (_board[nidx] != EMPTY && _board[nidx] != _color) {
+                        moves[nb_moves][0] = idx;
+                        moves[nb_moves][1] = nidx;
+                        moves[nb_moves][2] = 1; // capture
+                        nb_moves++;
+                    }
+                }
+            }
         }
     }
     
-    if(nb_moves == 0) {
+    if (nb_moves == 0) {
         completed = true;
-        return 0.0; // Draw
+        return (_color == WHITE) ? -1000000.0 : 1000000.0; // Pas de coup possible = défaite
     }
 
-    bool is_maximizing = (_color == WHITE);
-    double best_value = is_maximizing ? -1000000.0 : 1000000.0;
+    bool is_white = (_color == WHITE);
+    double best_value = is_white ? -1000000.0 : 1000000.0;
     bool any_move_completed = false;
     
-    for(int i = 0; i < nb_moves; i++) {
-        int next_board[9];
-        memcpy(next_board, _board, 9 * sizeof(int));
-        next_board[moves[i]] = _color;
+    for (int i = 0; i < nb_moves; i++) {
+        int next_board[taille_x * taille_y];
+        memcpy(next_board, _board, sizeof(int) * 6 * 10);
+        
+        // Appliquer le coup
+        int from = moves[i][0];
+        int to = moves[i][1];
+        next_board[from] = EMPTY;
+        next_board[to] = _color;
         
         bool move_completed;
-        double value = dls(next_board, depth-1, (_color == WHITE) ? BLACK : WHITE, move_completed);
+        int next_color = (_color == WHITE) ? BLACK : WHITE;
+        double value = dls(next_board, depth-1, next_color, move_completed, taille_plateau_x, taille_plateau_y);
         
-        if(move_completed) any_move_completed = true;
+        if (move_completed) any_move_completed = true;
         
-        if(is_maximizing) {
+        if (is_white) {
             best_value = std::max(best_value, value);
         } else {
             best_value = std::min(best_value, value);
         }
         
-        if(!move_completed) break;
+        if (!move_completed) break;
     }
     
     completed = any_move_completed;
     return best_value;
 }
 
-int ids(int _board[9], int _color, double max_time, int& reached_depth) {
+// Iterative Deepening Search
+int ids(int _board[], int _color, double _time_limit, int& reached_depth, int taille_plateau_x = 6, int taille_plateau_y = 10) {
     start_time = std::chrono::steady_clock::now();
-    time_limit = max_time;
+    time_limit = _time_limit;
+    
+    int best_move = -1;
     reached_depth = 0;
     
-    // Count empty squares and build moves
-    int moves[9];
+    // Générer tous les coups possibles
+    int moves[100][3]; // [indice_origine, indice_destination, capture]
     int nb_moves = 0;
-    for(int i = 0; i < 9; i++) {
-        if(_board[i] == EMPTY) {
-            moves[nb_moves++] = i;
-        }
-    }
     
-    if(nb_moves == 0) return -1; // No moves available
-    
-    int best_move = moves[0];
-    bool is_maximizing = (_color == WHITE);
-    double best_value = is_maximizing ? -1000000.0 : 1000000.0;
-    
-    // Check for immediate wins
-    for(int i = 0; i < nb_moves; i++) {
-        int next_board[9];
-        memcpy(next_board, _board, 9 * sizeof(int));
-        next_board[moves[i]] = _color;
-        if(is_a_win(next_board, _color)) {
-            return moves[i]; // Winning move
-        }
-    }
-    
-    // Iterative deepening
-    for(int d = 1; d <= 9; d++) { // Max depth is 9 in tic-tac-toe
-        bool depth_completed = false;
-        bool improved = false;
-        
-        for(int i = 0; i < nb_moves; i++) {
-            if(is_time_expired()) {
-                if(verbose && reached_depth > 0) {
-                    fprintf(stderr, "Stopped at depth %d\n", d);
+    for (int y = 0; y < taille_plateau_y; y++) {
+        for (int x = 0; x < taille_plateau_x; x++) {
+            int idx = y * taille_plateau_x + x;
+            if (_board[idx] == _color) {
+                // Direction de déplacement selon la couleur
+                int dy = (_color == WHITE) ? -1 : 1;
+                
+                // Avancer tout droit
+                int ny = y + dy;
+                if (ny >= 0 && ny < taille_plateau_y) {
+                    int nidx = ny * taille_plateau_x + x;
+                    if (_board[nidx] == EMPTY) {
+                        moves[nb_moves][0] = idx;
+                        moves[nb_moves][1] = nidx;
+                        moves[nb_moves][2] = 0;
+                        nb_moves++;
+                    }
                 }
-                return best_move;
+                
+                // Capture diagonale gauche
+                if (x > 0 && ny >= 0 && ny < taille_plateau_y) {
+                    int nidx = ny * taille_plateau_x + (x-1);
+                    if (_board[nidx] != EMPTY && _board[nidx] != _color) {
+                        moves[nb_moves][0] = idx;
+                        moves[nb_moves][1] = nidx;
+                        moves[nb_moves][2] = 1;
+                        nb_moves++;
+                    }
+                }
+                
+                // Capture diagonale droite
+                if (x < taille_plateau_x-1 && ny >= 0 && ny < taille_plateau_y) {
+                    int nidx = ny * taille_plateau_x + (x+1);
+                    if (_board[nidx] != EMPTY && _board[nidx] != _color) {
+                        moves[nb_moves][0] = idx;
+                        moves[nb_moves][1] = nidx;
+                        moves[nb_moves][2] = 1;
+                        nb_moves++;
+                    }
+                }
             }
+        }
+    }
+    
+    if (nb_moves == 0) return -1;
+    
+    // Choisir un coup aléatoire par défaut
+    best_move = rand() % nb_moves;
+    
+    for (int depth = 1; ; depth++) {
+        bool is_white = (_color == WHITE);
+        double best_value = is_white ? -1000000.0 : 1000000.0;
+        int current_best_move = -1;
+        bool any_completed = false;
+        
+        for (int i = 0; i < nb_moves; i++) {
+            int next_board[taille_x * taille_y];
+            memcpy(next_board, _board, sizeof(int) * 6 * 10);
             
-            int next_board[9];
-            memcpy(next_board, _board, 9 * sizeof(int));
-            next_board[moves[i]] = _color;
+            // Appliquer le coup
+            int from = moves[i][0];
+            int to = moves[i][1];
+            next_board[from] = EMPTY;
+            next_board[to] = _color;
             
             bool move_completed;
-            double value = dls(next_board, d-1, (_color == WHITE) ? BLACK : WHITE, move_completed);
+            int next_color = (_color == WHITE) ? BLACK : WHITE;
+            double value = dls(next_board, depth-1, next_color, move_completed, taille_plateau_x, taille_plateau_y);
             
-            if(move_completed) {
-                depth_completed = true;
-                if((is_maximizing && value > best_value) || (!is_maximizing && value < best_value)) {
+            if (move_completed) {
+                any_completed = true;
+                if ((is_white && value > best_value) || (!is_white && value < best_value)) {
                     best_value = value;
-                    best_move = moves[i];
-                    improved = true;
+                    current_best_move = i;
                 }
             }
+            
+            if (is_time_expired()) break;
         }
         
-        if(depth_completed) {
-            reached_depth = d;
-            if(!improved && d > 2) {
-                return best_move;
-            }
-        } else {
-            break;
+        if (any_completed && current_best_move != -1) {
+            best_move = current_best_move;
+            reached_depth = depth;
         }
+        
+        if (is_time_expired()) break;
     }
     
-    return best_move;
+    // Retourner le meilleur coup trouvé
+    return moves[best_move][1]; // Retourner la position 'destination'
 }
-
-int genmove(int _board[9], int _color) {
+// Fonction de génération de coup pour le jeu Breakthrough
+int genmove(int _board[], int _color, double time_limit_val = 1) {
     if(LOG_ACTIVE) {
-        fprintf(stderr, "--- genmove\n");
-        fprintf(stderr, "board : "); fprint_board(stderr, _board);
-        fprintf(stderr, "color : %d\n", _color);
+        fprintf(stderr, "--- genmove pour Breakthrough\n");
+        fprintf(stderr, "couleur : %d (1=BLANC, 2=NOIR)\n", _color);
     }
     
+    // Mesure du temps de départ
     auto search_start = std::chrono::high_resolution_clock::now();
     
-    // Count empty squares
-    int nb_empty = 0;
-    for(int i = 0; i < 9; i++) {
-        if(_board[i] == EMPTY) nb_empty++;
+    // Compte le nombre de pièces restantes pour ajuster le temps de réflexion
+    int nb_pieces = 0;
+    for(int i = 0; i < taille_x * taille_y; i++) {
+        if(_board[i] != EMPTY) nb_pieces++;
     }
     
-    // Adjust time limit based on number of moves
-    double time_limit_val = (nb_empty < 5) ? 0.2 : 0.95;
+    // Ajustement du temps limite en fonction de l'avancement de la partie
+    // Moins de temps en fin de partie où les choix sont plus limités
+    if(nb_pieces < 10) time_limit_val = 0.2;
     
+    // Appel à la recherche itérative avec approfondissement
     int reached_depth;
     int move = ids(_board, _color, time_limit_val, reached_depth);
     
+    // Mesure du temps de fin et calcul de la durée
     auto search_end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(search_end - search_start).count();
     
+    // Affichage des informations de recherche si le mode verbeux est activé
     if(LOG_ACTIVE) {
-        fprintf(stderr, "Reached depth: %d\n", reached_depth);
-        fprintf(stderr, "Search took: %ld milliseconds\n", duration);
-        fprintf(stderr, "--- return %d\n", move);
+        fprintf(stderr, "Profondeur atteinte: %d\n", reached_depth);
+        fprintf(stderr, "Temps de recherche: %ld millisecondes\n", duration);
+        fprintf(stderr, "--- retourne le coup: %d\n", move);
     }
     
     return move;
@@ -318,28 +405,12 @@ int main(int _ac, char** _av) {
   }
   char* input_board = _av[1];
   int turn_board = WHITE;
-  if(strcmp(_av[2],"x")==0) turn_board = BLACK;
+  if(strcmp(_av[2],"@")==0) turn_board = BLACK;
   std::srand(std::time(0));
   int r = std::rand(); // first call to get more variable rand
   r++; // to avoid a warning :-)
-  int ttt_board[9];
+  int ttt_board[taille_x * taille_y];
   init(input_board, ttt_board);
   printf("%d\n", genmove(ttt_board, turn_board));
   return 0;
 }
-int main(int _ac, char** _av) {
-    if(_ac != 3) {
-      fprintf(stderr, "usage: %s STRBOARD TURN\n", _av[0]);
-      return 0;
-    }
-    char* input_board = _av[1];
-    int turn_board = WHITE;
-    if(strcmp(_av[2],"x")==0) turn_board = BLACK;
-    std::srand(std::time(0));
-    int r = std::rand(); // first call to get more variable rand
-    r++; // to avoid a warning :-)
-    int ttt_board[9];
-    init(input_board, ttt_board);
-    printf("%d\n", genmove(ttt_board, turn_board));
-    return 0;
-  }
