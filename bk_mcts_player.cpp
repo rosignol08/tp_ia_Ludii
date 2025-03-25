@@ -26,7 +26,7 @@
  * 
  * Dans le mode interactif:
  * - Choisissez la taille du plateau (1 pour 6x3, 2 pour 6x10)
- * - L'IA joue les blancs (o), vous jouez les noirs (@)
+ * - L'IA joue les blancs (o)
  * - Entrez vos coups au format LI-CI-LF-CF (ex: 5a4a)
  */
 
@@ -378,7 +378,7 @@ public:
                                 // Déplacement vers une case vide ou capture d'un pion adverse
                                 if (board[diag_pos] == EMPTY || 
                                     (board[diag_pos] != EMPTY && board[diag_pos] != player)) {
-                                    legal_moves.push_back(Move(pos, new_pos));
+                                    legal_moves.push_back(Move(pos, diag_pos));
                                 }
                             }
                         }
