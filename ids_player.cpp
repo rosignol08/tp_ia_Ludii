@@ -239,7 +239,7 @@ std::string genmove(bt_t& board, int _color, double time_limit_val = 1) {
         fprintf(stderr, "Joueur: %s, Nombre de coups disponibles: %d\n", 
                 (_color == WHITE) ? "BLANC (o)" : "NOIR (@)", board.nb_moves);
         
-        // Afficher les coups disponibles pour déboguer
+        //les coups disponibles
         for (int i = 0; i < board.nb_moves; i++) {
             fprintf(stderr, "Coup %d: (%d,%d) -> (%d,%d)\n", i,
                    board.moves[i].line_i, board.moves[i].col_i,
@@ -247,7 +247,7 @@ std::string genmove(bt_t& board, int _color, double time_limit_val = 1) {
         }
     }
     
-    // Appliquer IDS pour trouver le meilleur coup
+    //IDS pour trouver le meilleur coup
     int reached_depth;
     bt_move_t move = ids(board, time_limit_val, reached_depth);
     
@@ -257,8 +257,7 @@ std::string genmove(bt_t& board, int _color, double time_limit_val = 1) {
         fprintf(stderr, "Profondeur atteinte: %d\n", reached_depth);
     }
     
-    // Conversion du move en notation du premier programme
-    // Le format doit être: ligne_départ colonne_départ ligne_arrivée colonne_arrivée
+    //conversion du move en notation du premier programme
     std::string move_str = std::to_string(move.line_i + 1) + 
                           (char)('a' + move.col_i) + 
                           std::to_string(move.line_f + 1) + 
@@ -283,20 +282,20 @@ int main(int _ac, char** _av) {
     int turn_board = WHITE;
     if(strcmp(_av[4],"@")==0) turn_board = BLACK;
     else if(strcmp(_av[4],"o")==0) turn_board = WHITE;
-    double time_limit_val = atof(_av[5]); // limite de temps en secondes
+    double time_limit_val = atof(_av[5]); //limite de temps en secondes
     
     std::srand(std::time(0));
     
-    // Initialisation du board
+    //initialisation du board
     init(input_board, B);
     
-    // Génération et affichage du coup
+    //génération et affichage du coup
     printf("%s\n", genmove(B, turn_board, time_limit_val).c_str());
     
     return 0;
 }
 
 /*
-./a.out 10 6 @@@@@@@@@@@@@@@@@@@@....................oooooooooooooooooooo @ 1
-./a.out 10 6 @@@@@@@@@@@@@@@@@@@@....................oooooooooooooooooooo o 1
+./a.out 10 6 @@@@@@@@@@@@@@@@@@@@....................oooooooooooooooooooo @ 1.0
+./a.out 10 6 @@@@@@@@@@@@@@@@@@@@....................oooooooooooooooooooo o 1.0
 */
