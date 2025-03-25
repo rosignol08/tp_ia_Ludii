@@ -8,6 +8,27 @@
 #include <algorithm>
 #include <random>
 #include <string>
+#include <iostream>
+
+/*
+ * Breakthrough MCTS Player
+ * 
+ * Compilation:
+ * g++ -Wall -std=c++11 bk_mcts_player.cpp -o bk_mcts_player
+ *
+ * Utilisation en mode tournoi:
+ * ./bk_mcts_player BOARD_STR TURN MAX_TIME
+ * Exemple pour 6x3: ./bk_mcts_player "@@@@@@@@@...oooooo" o 1.0
+ * Exemple pour 6x10: ./bk_mcts_player "@@@@@@@@@@@@@@@@@@@@....................oooooooooooooooooooo" o 1.0
+ *
+ * Utilisation en mode interactif (pour jouer coup par coup):
+ * ./bk_mcts_player
+ * 
+ * Dans le mode interactif:
+ * - Choisissez la taille du plateau (1 pour 6x3, 2 pour 6x10)
+ * - L'IA joue les blancs (o), vous jouez les noirs (@)
+ * - Entrez vos coups au format LI-CI-LF-CF (ex: 5a4a)
+ */
 
 #define EMPTY 0
 #define WHITE 1  // 'o'
@@ -357,7 +378,7 @@ public:
                                 // Déplacement vers une case vide ou capture d'un pion adverse
                                 if (board[diag_pos] == EMPTY || 
                                     (board[diag_pos] != EMPTY && board[diag_pos] != player)) {
-                                    legal_moves.push_back(Move(pos, diag_pos));
+                                    legal_moves.push_back(Move(pos, new_pos));
                                 }
                             }
                         }
@@ -394,6 +415,29 @@ std::string convert_move_to_string(const Move& move, int rows, int cols) {
     char result[5];
     sprintf(result, "%d%c%d%c", li, ci, lf, cf);
     return std::string(result);
+}
+
+// Fonction pour convertir une chaîne de format LI-CI-LF-CF en structure Move
+Move convert_string_to_move(const std::string& move_str, int rows, int cols) {
+    int li = move_str[0] - '0';
+    char ci = move_str[1];
+    int lf = move_str[2] - '0';
+    char cf = move_str[3];
+    
+    // Convertir les coordonnées au format interne
+    int from_row = rows - li;
+    int from_col = ci - 'a';
+    int to_row = rows - lf;
+    int to_col = cf - 'a';
+    
+    // Créer le mouvement
+    return Move(from_row * cols + from_col, to_row * cols + to_col);
+}
+
+// Fonction pour appliquer un mouvement au plateau
+void apply_move_to_board(int* board, const Move& move) {
+    board[move.to] = board[move.from];
+    board[move.from] = EMPTY;
 }
 
 // Fonction principale MCTS
@@ -497,8 +541,8 @@ std::string mcts_genmove(int* board, int player, int rows, int cols, double max_
 void init(char* _strboard, int* _board, int size) {
     for(int i = 0; i < size; i++) {
         if(_strboard[i] == '.') _board[i] = EMPTY;
-        if(_strboard[i] == '@') _board[i] = BLACK;  // Changé de 'x' à '@'
-        if(_strboard[i] == 'o') _board[i] = WHITE;
+        if(_strboard[i] == '@') _board[i] = BLACK;  // Noir
+        if(_strboard[i] == 'o') _board[i] = WHITE;  // Blanc
     }
 }
 
@@ -508,7 +552,7 @@ void fprint_board(FILE* _out, int* _board, int rows, int cols) {
             int pos = row * cols + col;
             if(_board[pos] == EMPTY) fprintf(_out, ". ");
             else if(_board[pos] == WHITE) fprintf(_out, "o ");
-            else fprintf(_out, "@ ");  // Changé de 'x' à '@'
+            else fprintf(_out, "@ ");
         }
         fprintf(_out, "\n");
     }
@@ -554,55 +598,172 @@ std::string genmove(int* _board, int _color, int rows, int cols, double max_time
     return mcts_move;
 }
 
-/*
- * g++ -Wall -std=c++11 bk_mcts_player.cpp -o bk_mcts_player
- * Usage: ./bk_mcts_player BOARD_STR TURN MAX_TIME
- * Exemple pour 6x3: ./bk_mcts_player ""@@@@@@@@@...oooooo"" o 1.0
- * Exemple pour 6x10: ./bk_mcts_player "@@@@@@@@@@@@@@@@@@@@....................oooooooooooooooooooo" o 1.0
- */
-int main(int _ac, char** _av) {
-    if(_ac != 4) {
-        fprintf(stderr, "usage: %s BOARD_STR TURN MAX_TIME\n", _av[0]);
-        return 1;
+// Fonction pour afficher le plateau
+void print_board(int* board, int rows, int cols) {
+    std::cout << "\nPlateau actuel:\n";
+    for(int row = 0; row < rows; row++) {
+        for(int col = 0; col < cols; col++) {
+            int pos = row * cols + col;
+            if(board[pos] == EMPTY) std::cout << ". ";
+            else if(board[pos] == WHITE) std::cout << "o ";
+            else std::cout << "@ ";
+        }
+        std::cout << " | " << (rows - row) << std::endl;
     }
     
-    char* input_board = _av[1];
-    char turn = _av[2][0];
-    double max_time = atof(_av[3]);
-    
-    int turn_board = WHITE;
-    if(turn == '@') turn_board = BLACK;  // Changé de 'x' à '@'
-    
-    // Détermine les dimensions du plateau
+    // Affiche les lettres des colonnes
+    std::cout << "--";
+    for(int col = 0; col < cols; col++) {
+        std::cout << "--";
+    }
+    std::cout << "\n  ";
+    for(int col = 0; col < cols; col++) {
+        std::cout << (char)('a' + col) << " ";
+    }
+    std::cout << std::endl;
+}
+
+// Fonction pour convertir le plateau en chaîne de caractères
+std::string board_to_string(int* board, int size) {
+    std::string result;
+    for(int i = 0; i < size; i++) {
+        if(board[i] == EMPTY) result += '.';
+        else if(board[i] == WHITE) result += 'o';
+        else result += '@';
+    }
+    return result;
+}
+
+// Mode interactif permettant de jouer coup par coup
+void interactive_mode() {
     int rows, cols;
-    int len = strlen(input_board);
+    int board_size;
+    int board[60]; // Taille maximale possible
     
-    if(len == 60) {
+    std::cout << "Choisissez la taille du plateau (1 pour 6x3, 2 pour 6x10): ";
+    int choice;
+    std::cin >> choice;
+    
+    if(choice == 1) {
+        rows = 6;
+        cols = 3;
+        board_size = rows * cols;
+        
+        // Initialisation du plateau 6x3
+        const char* initial_board = "@@@@@@@@@...oooooo";
+        init(const_cast<char*>(initial_board), board, board_size);
+    } else {
         rows = 6;
         cols = 10;
-    } else if(len == 18) {
-        rows = 6;
-        cols = 3;
-    } else if(len == 12) {
-        // Format compacté pour le plateau 6x3
-        rows = 6;
-        cols = 3;
-        // Note: assume l'ordre correct des caractères
-    } else {
-        fprintf(stderr, "Taille de plateau non prise en charge: %d\n", len);
-        return 1;
+        board_size = rows * cols;
+        
+        // Initialisation du plateau 6x10
+        const char* initial_board = "@@@@@@@@@@@@@@@@@@@@....................oooooooooooooooooooo";
+        init(const_cast<char*>(initial_board), board, board_size);
     }
     
+    // Affichage du plateau initial
+    print_board(board, rows, cols);
+    
+    // Boucle de jeu
+    int current_player = WHITE; // Le blanc commence généralement
+    double time_limit = 1.0; // Temps limite en secondes
+    bool game_over = false;
+    
+    while(!game_over) {
+        std::cout << "\nAu tour de " << (current_player == WHITE ? "Blanc (o)" : "Noir (@)") << std::endl;
+        
+        std::string move_str;
+        
+        if(current_player == WHITE) {
+            // IA joue pour le blanc
+            std::cout << "L'IA réfléchit...\n";
+            move_str = genmove(board, current_player, rows, cols, time_limit);
+            std::cout << "L'IA joue: " << move_str << std::endl;
+        } else {
+            // Humain joue pour le noir
+            std::cout << "Entrez votre coup (format LI-CI-LF-CF, par exemple 5a4a): ";
+            std::cin >> move_str;
+            
+            // Vérification du format
+            if(move_str.length() != 4) {
+                std::cout << "Format invalide! Réessayez.\n";
+                continue;
+            }
+        }
+        
+        // Appliquer le mouvement
+        Move move = convert_string_to_move(move_str, rows, cols);
+        apply_move_to_board(board, move);
+        
+        // Afficher le plateau mis à jour
+        print_board(board, rows, cols);
+        
+        // Vérifier si la partie est terminée
+        int winner = EMPTY;
+        if(MCTSNode::is_terminal_state(board, rows, cols, winner)) {
+            std::cout << "\n*** FIN DE LA PARTIE ***\n";
+            if(winner == WHITE) {
+                std::cout << "Le joueur Blanc (o) a gagné!\n";
+            } else {
+                std::cout << "Le joueur Noir (@) a gagné!\n";
+            }
+            game_over = true;
+        }
+        
+        // Passer au joueur suivant
+        current_player = (current_player == WHITE) ? BLACK : WHITE;
+    }
+}
+
+int main(int _ac, char** _av) {
     // Initialisation du générateur aléatoire
     std::srand(std::time(0));
     
-    // Initialise le plateau
-    int board[60]; // Taille maximale possible
-    init(input_board, board, len);
-    
-    // Génère et affiche le meilleur coup
-    std::string best_move = genmove(board, turn_board, rows, cols, max_time);
-    printf("%s\n", best_move.c_str());
-    
-    return 0;
+    if(_ac == 1) {
+        // Mode interactif
+        interactive_mode();
+        return 0;
+    } else if(_ac == 4) {
+        // Mode normal (pour le tournoi)
+        char* input_board = _av[1];
+        char turn = _av[2][0];
+        double max_time = atof(_av[3]);
+        
+        int turn_board = WHITE;
+        if(turn == '@') turn_board = BLACK;
+        
+        // Détermine les dimensions du plateau
+        int rows, cols;
+        int len = strlen(input_board);
+        
+        if(len == 60) {
+            rows = 6;
+            cols = 10;
+        } else if(len == 18) {
+            rows = 6;
+            cols = 3;
+        } else if(len == 12) {
+            // Format compacté pour le plateau 6x3
+            rows = 6;
+            cols = 3;
+            // Note: assume l'ordre correct des caractères
+        } else {
+            fprintf(stderr, "Taille de plateau non prise en charge: %d\n", len);
+            return 1;
+        }
+        
+        // Initialise le plateau
+        int board[60]; // Taille maximale possible
+        init(input_board, board, len);
+        
+        // Génère et affiche le meilleur coup
+        std::string best_move = genmove(board, turn_board, rows, cols, max_time);
+        printf("%s\n", best_move.c_str());
+        
+        return 0;
+    } else {
+        fprintf(stderr, "usage: %s [BOARD_STR TURN MAX_TIME] ou sans arguments pour le mode interactif\n", _av[0]);
+        return 1;
+    }
 }
