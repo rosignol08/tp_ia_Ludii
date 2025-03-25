@@ -15,6 +15,7 @@ int branches_count = 0;
 bool verbose = true; //debug
 //une variable globale pour suivre le temps
 std::chrono::steady_clock::time_point start_time;
+//@@@@@@@@@@@@@@@@@@@@....................oooooooooooooooooooo
 double time_limit;
 void init(char _strboard[], bt_t& board) {
     board.init(taille_x, taille_y);  // Initialisation avec les dimensions
@@ -29,32 +30,27 @@ void init(char _strboard[], bt_t& board) {
     // . sont les cases vides
     /*
       a b c d e f g h i j 
-    6 @ @ @ @ @ @ @ @ @ @ 
     5 @ @ @ @ @ @ @ @ @ @ 
-    4 @ @ @ @ @ @ . . . . 
-    3 @ @ . . . . . . . . 
-    2 . . . . . . o o o o 
-    1 . . . . . . o o o o 
+    4 @ @ @ @ @ @ @ @ @ @ 
+    3 . . . . . . . . . . 
+    2 . . . . . . . . . . 
+    1 o o o o o o o o o o 
+    0 o o o o o o o o o o 
     */
+   int x, y;
    
-    int idx = 0;
-    for(int y = 0; y < taille_y; y++) {
-        for(int x = 0; x < taille_x; x++) {
-            if(idx < strlen(_strboard)) {
-                if(_strboard[idx] == '@') {
-                    board.board[y][x] = BLACK;
-                } else if(_strboard[idx] == 'o') {
-                    board.board[y][x] = WHITE;
-                } else {
-                    board.board[y][x] = EMPTY;
-                }
-                idx++;
+    for (x = 0; x < taille_x; x++) {
+        for (y = 0; y < taille_y; y++) {
+            int index = x * taille_y + y; // Calcul de l'index dans la chaîne
+            if (_strboard[index] == '@') {
+                board.board[x][y] = BLACK;
+            } else if (_strboard[index] == 'o') {
+                board.board[x][y] = WHITE;
             } else {
-                board.board[y][x] = EMPTY;
+                board.board[x][y] = EMPTY;
             }
         }
     }
-    
     if (verbose) {
         fprintf(stderr, "État du plateau après initialisation:\n");
         board.print_board(stderr);
@@ -229,7 +225,7 @@ bt_move_t ids(bt_t& board, double max_time, int& reached_depth) {
 // Implémentation de genmove compatible avec le premier programme
 std::string genmove(bt_t& board, int _color, double time_limit_val = 1) {
     // Configurer le tour du joueur correctement
-    board.turn = (_color == WHITE) ? 0 : 1;
+    board.turn = (_color == BLACK) ? 0 : 1;
     
     // Mettre à jour les coups disponibles
     board.update_moves();
@@ -277,7 +273,7 @@ std::string genmove(bt_t& board, int _color, double time_limit_val = 1) {
 
 int main(int _ac, char** _av) {
     if(_ac != 6) {
-        fprintf(stderr, "usage: %s WIDTH HEIGHT STRBOARD TURN TIME_LIMIT\n", _av[0]);
+        fprintf(stderr, "usage: %s TAILLE_X TAILLE_Y STRBOARD TURN TIME_LIMIT\n", _av[0]);
         return 0;
     }
     
@@ -301,6 +297,6 @@ int main(int _ac, char** _av) {
 }
 
 /*
-./a.out 6 10 @@@@@@@@@@@@@@@@@@@@....................oooooooooooooooooooo @ 1
-./a.out 6 10 @@@@@@@@@@@@@@@@@@@@....................oooooooooooooooooooo o 1
+./a.out 10 6 @@@@@@@@@@@@@@@@@@@@....................oooooooooooooooooooo @ 1
+./a.out 10 6 @@@@@@@@@@@@@@@@@@@@....................oooooooooooooooooooo o 1
 */
