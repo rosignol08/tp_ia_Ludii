@@ -259,9 +259,9 @@ std::string genmove(bt_t& board, int _color, double time_limit_val = 1) {
     
     // Conversion du move en notation du premier programme
     // Le format doit être: ligne_départ colonne_départ ligne_arrivée colonne_arrivée
-    std::string move_str = std::to_string(move.line_i) + 
+    std::string move_str = std::to_string(move.line_i + 1) + 
                           (char)('a' + move.col_i) + 
-                          std::to_string(move.line_f) + 
+                          std::to_string(move.line_f + 1) + 
                           (char)('a' + move.col_f);
     
     if (verbose) {
