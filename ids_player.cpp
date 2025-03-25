@@ -8,6 +8,15 @@
 #include <chrono>
 #include "mybt.h"
 
+
+/*
+ids player pour breaktrough
+usage: ./a.out TAILLE_X TAILLE_Y STRBOARD TURN TIME_LIMIT
+./a.out 10 6 @@@@@@@@@@@@@@@@@@@@....................oooooooooooooooooooo @ 1.0
+./a.out 10 6 @@@@@@@@@@@@@@@@@@@@....................oooooooooooooooooooo o 1.0
+
+*/
+
 bt_t B;
 int taille_x = 6;
 int taille_y = 10;
@@ -294,8 +303,3 @@ int main(int _ac, char** _av) {
     
     return 0;
 }
-
-/*
-./a.out 10 6 @@@@@@@@@@@@@@@@@@@@....................oooooooooooooooooooo @ 1.0
-./a.out 10 6 @@@@@@@@@@@@@@@@@@@@....................oooooooooooooooooooo o 1.0
-*/
