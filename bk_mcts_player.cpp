@@ -11,7 +11,7 @@
 
 #define EMPTY 0
 #define WHITE 1  // 'o'
-#define BLACK 2  // 'x'
+#define BLACK 2  // '@'
 #define LOG_ACTIVE 0
 
 // Structure pour les mouvements
@@ -20,7 +20,30 @@ struct Move {
     int to;    // Position d'arrivée
     
     Move(int f, int t) : from(f), to(t) {}
+    
+    // Opérateur d'égalité pour pouvoir comparer les mouvements
+    bool operator==(const Move& other) const {
+        return from == other.from && to == other.to;
+    }
 };
+
+// Déclaration anticipée (forward declaration)
+std::string convert_move_to_string(const Move& move, int rows, int cols);
+
+// Fonction de débogage pour afficher les mouvements légaux
+void print_legal_moves(const std::vector<Move>& moves, int rows, int cols) {
+    fprintf(stderr, "Mouvements légaux (%zu):\n", moves.size());
+    for (size_t i = 0; i < moves.size(); i++) {
+        int from_row = moves[i].from / cols;
+        int from_col = moves[i].from % cols;
+        int to_row = moves[i].to / cols;
+        int to_col = moves[i].to % cols;
+        
+        fprintf(stderr, "  %zu. (%d,%d) -> (%d,%d) = %s\n", 
+                i+1, from_row, from_col, to_row, to_col,
+                convert_move_to_string(moves[i], rows, cols).c_str());
+    }
+}
 
 // Constantes pour MCTS
 #define C_PUCT 1.41  // Facteur d'exploration
@@ -90,6 +113,12 @@ public:
                     }
                 }
             }
+        }
+        
+        if (LOG_ACTIVE) {
+            fprintf(stderr, "get_legal_moves() a trouvé %zu mouvements pour le joueur %d\n", 
+                    untried_moves.size(), player);
+            print_legal_moves(untried_moves, rows, cols);
         }
         
         // Mélange les mouvements pour diversifier l'exploration
@@ -172,6 +201,15 @@ public:
             }
         }
         
+        if (best_child == nullptr && LOG_ACTIVE) {
+            fprintf(stderr, "Avertissement: select_best_child n'a trouvé aucun enfant avec visites > 0\n");
+            // Si aucun nœud n'a de visites, prenons le premier
+            if (!children.empty()) {
+                best_child = children[0];
+                fprintf(stderr, "Utilisation du premier enfant disponible\n");
+            }
+        }
+        
         return best_child;
     }
 
@@ -202,8 +240,13 @@ public:
         }
         int sim_player = player;
         
+        // Pour éviter les boucles infinies
+        int max_moves = 100; 
+        int move_count = 0;
+        
         // Simule des coups aléatoires jusqu'à la fin de la partie
-        while (true) {
+        while (move_count < max_moves) {
+            move_count++;
             int winner = EMPTY;
             
             // Vérifie si la partie est terminée
@@ -231,6 +274,10 @@ public:
             // Change de joueur
             sim_player = (sim_player == WHITE) ? BLACK : WHITE;
         }
+        
+        // En cas de dépassement du nombre maximal de coups, on privilégie le joueur blanc
+        // car ses pions sont plus proches de leur objectif dans la position initiale
+        return WHITE;
     }
 
     // Met à jour les statistiques du noeud
@@ -323,7 +370,7 @@ public:
 
 // Convertir l'indice du tableau en format LI-CI-LF-CF
 // Les lignes sont numérotées de 1 (bas) à 6 (haut)
-// Les colonnes sont étiquetées de a (droite) à j (gauche) pour 6x10
+// Les colonnes sont étiquetées de a (gauche) à j (droite) pour 6x10
 std::string convert_move_to_string(const Move& move, int rows, int cols) {
     // Position de départ
     int from_row = move.from / cols;
@@ -335,15 +382,13 @@ std::string convert_move_to_string(const Move& move, int rows, int cols) {
     
     // Convertir en format LI-CI-LF-CF
     // Les lignes dans notre modèle sont de 0 (haut) à 5 (bas)
-    // Les colonnes sont de 0 (gauche) à 9 (droite) pour 6x10
-    
     // Pour les lignes: convertir de 0-5 à 6-1 (inverser et décaler)
     int li = rows - from_row;
     int lf = rows - to_row;
     
-    // Pour les colonnes: convertir de 0-9 à j-a pour 6x10 (inverser et convertir en lettre)
-    char ci = 'a' + (cols - 1 - from_col);
-    char cf = 'a' + (cols - 1 - to_col);
+    // Pour les colonnes: a est à gauche (colonne 0) et j est à droite (colonne 9) pour 6x10
+    char ci = 'a' + from_col;
+    char cf = 'a' + to_col;
     
     // Construire la chaîne
     char result[5];
@@ -357,10 +402,25 @@ std::string mcts_genmove(int* board, int player, int rows, int cols, double max_
     
     // Crée le noeud racine
     MCTSNode root(board, player, rows, cols);
+    
+    // Vérifier si des mouvements légaux existent
+    if (root.untried_moves.empty()) {
+        if (LOG_ACTIVE) {
+            fprintf(stderr, "Aucun mouvement légal trouvé!\n");
+        }
+        return "-1";
+    }
+    
+    // Vérifie le début de l'algorithme
+    if (LOG_ACTIVE) {
+        fprintf(stderr, "MCTS avec %zu mouvements initiaux\n", root.untried_moves.size());
+    }
+    
     int iterations = 0;
     
     // Exécute MCTS jusqu'à épuisement du temps
-    while (true) {
+    int max_iterations = 100000;  // Limite le nombre d'itérations pour éviter les boucles infinies
+    while (iterations < max_iterations) {
         // Vérification périodique du temps
         if (iterations % 10 == 0) {
             auto current_time = std::chrono::steady_clock::now();
@@ -370,8 +430,12 @@ std::string mcts_genmove(int* board, int player, int rows, int cols, double max_
         
         // Sélection: descend dans l'arbre en choisissant les meilleurs noeuds
         MCTSNode* node = &root;
-        while (!node->untried_moves.empty() == false && !node->children.empty()) {
+        while (node->untried_moves.empty() && !node->children.empty()) {
             node = node->select_best_child();
+            if (node == nullptr) {
+                if (LOG_ACTIVE) fprintf(stderr, "select_best_child() a retourné nullptr!\n");
+                break;
+            }
         }
         
         // Expansion: ajoute un nouvel enfant si possible
@@ -433,7 +497,7 @@ std::string mcts_genmove(int* board, int player, int rows, int cols, double max_
 void init(char* _strboard, int* _board, int size) {
     for(int i = 0; i < size; i++) {
         if(_strboard[i] == '.') _board[i] = EMPTY;
-        if(_strboard[i] == 'x') _board[i] = BLACK;
+        if(_strboard[i] == '@') _board[i] = BLACK;  // Changé de 'x' à '@'
         if(_strboard[i] == 'o') _board[i] = WHITE;
     }
 }
@@ -444,7 +508,7 @@ void fprint_board(FILE* _out, int* _board, int rows, int cols) {
             int pos = row * cols + col;
             if(_board[pos] == EMPTY) fprintf(_out, ". ");
             else if(_board[pos] == WHITE) fprintf(_out, "o ");
-            else fprintf(_out, "x ");
+            else fprintf(_out, "@ ");  // Changé de 'x' à '@'
         }
         fprintf(_out, "\n");
     }
@@ -458,15 +522,43 @@ std::string genmove(int* _board, int _color, int rows, int cols, double max_time
         fprintf(stderr, "color : %d\n", _color);
     }
     
-    return mcts_genmove(_board, _color, rows, cols, max_time);
+    // Vérifier d'abord s'il y a des mouvements légaux directs
+    MCTSNode temp(_board, _color, rows, cols);
+    if (temp.untried_moves.empty()) {
+        if(LOG_ACTIVE) {
+            fprintf(stderr, "Aucun mouvement légal trouvé directement!\n");
+        }
+        return "-1";
+    }
+    
+    if(LOG_ACTIVE) {
+        fprintf(stderr, "Nombre de mouvements légaux: %zu\n", temp.untried_moves.size());
+        // Prenons juste le premier mouvement légal si MCTS échoue
+        if (!temp.untried_moves.empty()) {
+            fprintf(stderr, "Premier mouvement légal: %s\n", 
+                    convert_move_to_string(temp.untried_moves[0], rows, cols).c_str());
+        }
+    }
+    
+    // Essayons de faire MCTS maintenant
+    std::string mcts_move = mcts_genmove(_board, _color, rows, cols, max_time);
+    
+    // Si MCTS échoue, prenons simplement le premier mouvement légal
+    if (mcts_move == "-1" && !temp.untried_moves.empty()) {
+        if(LOG_ACTIVE) {
+            fprintf(stderr, "MCTS a échoué, utilisation du premier mouvement légal\n");
+        }
+        mcts_move = convert_move_to_string(temp.untried_moves[0], rows, cols);
+    }
+    
+    return mcts_move;
 }
 
 /*
  * g++ -Wall -std=c++11 bk_mcts_player.cpp -o bk_mcts_player
  * Usage: ./bk_mcts_player BOARD_STR TURN MAX_TIME
- * Example pour 6x3: ./bk_mcts_player "...ooo...xxx..." o 1.0
- * Example pour 6x10: ./bk_mcts_player "..........oooooooooo....................xxxxxxxxxx.........." o 1.0
- * returns move in format LI-CI-LF-CF (e.g., "2b3c")
+ * Exemple pour 6x3: ./bk_mcts_player ""@@@@@@@@@...oooooo"" o 1.0
+ * Exemple pour 6x10: ./bk_mcts_player "@@@@@@@@@@@@@@@@@@@@....................oooooooooooooooooooo" o 1.0
  */
 int main(int _ac, char** _av) {
     if(_ac != 4) {
@@ -479,7 +571,7 @@ int main(int _ac, char** _av) {
     double max_time = atof(_av[3]);
     
     int turn_board = WHITE;
-    if(turn == 'x') turn_board = BLACK;
+    if(turn == '@') turn_board = BLACK;  // Changé de 'x' à '@'
     
     // Détermine les dimensions du plateau
     int rows, cols;
@@ -491,6 +583,11 @@ int main(int _ac, char** _av) {
     } else if(len == 18) {
         rows = 6;
         cols = 3;
+    } else if(len == 12) {
+        // Format compacté pour le plateau 6x3
+        rows = 6;
+        cols = 3;
+        // Note: assume l'ordre correct des caractères
     } else {
         fprintf(stderr, "Taille de plateau non prise en charge: %d\n", len);
         return 1;
