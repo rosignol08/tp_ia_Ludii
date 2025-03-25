@@ -354,8 +354,8 @@ int ids(int _board[], int _color, double _time_limit, int& reached_depth, int ta
     return moves[best_move][1]; //return la position 'destination'
 }
 // Fonction de génération de coup pour le jeu Breakthrough
-int genmove(int _board[], int _color, double time_limit_val = 1) {
-    if(LOG_ACTIVE) {
+std::string genmove(int _board[], int _color, double time_limit_val = 1) {
+    if(verbose) {
         fprintf(stderr, "--- genmove pour Breakthrough\n");
         fprintf(stderr, "couleur : %d (1=BLANC, 2=NOIR)\n", _color);
     }
@@ -370,12 +370,63 @@ int genmove(int _board[], int _color, double time_limit_val = 1) {
     }
     
     //ajustement du temps limite en fonction de l'avancement de la partie
-    //moin de temps en fin de partie où les choix sont plus limités
-    if(nb_pieces < 10) time_limit_val = 0.2;
+    //moins de temps en fin de partie où les choix sont plus limités
+    //if(nb_pieces < 10) time_limit_val = 0.2;
     
-    // Appel à la recherche itérative avec approfondissement
+    //appel à la recherche itérative avec approfondissement
     int reached_depth;
-    int move = ids(_board, _color, time_limit_val, reached_depth);
+    int move_idx = ids(_board, _color, time_limit_val, reached_depth);
+    
+    if (move_idx == -1) {
+        return " "; //aucun coup valide trouvé
+    }
+    
+    //trouve la position d'origine en vérifiant l'état du plateau
+    int from_idx = -1;
+    for (int y = 0; y < taille_y; y++) {
+        for (int x = 0; x < taille_x; x++) {
+            int idx = y * taille_x + x;
+            if (_board[idx] == _color) {
+                //verif si cette pièce peut se déplacer vers move_idx
+                int dy = (_color == WHITE) ? -1 : 1;
+                
+                //verif tout droit devant
+                if ((y + dy) >= 0 && (y + dy) < taille_y) {
+                    if ((y + dy) * taille_x + x == move_idx) {
+                        from_idx = idx;
+                        break;
+                    }
+                }
+                
+                //verif diagonale gauche
+                if (x > 0 && (y + dy) >= 0 && (y + dy) < taille_y) {
+                    if ((y + dy) * taille_x + (x - 1) == move_idx) {
+                        from_idx = idx;
+                        break;
+                    }
+                }
+                
+                //verif diagonale droite
+                if (x < taille_x - 1 && (y + dy) >= 0 && (y + dy) < taille_y) {
+                    if ((y + dy) * taille_x + (x + 1) == move_idx) {
+                        from_idx = idx;
+                        break;
+                    }
+                }
+            }
+        }
+        if (from_idx != -1) break;
+    }
+    
+    //convert les indices en coordonnées
+    int from_y = from_idx / taille_x;
+    int from_x = from_idx % taille_x;
+    int to_y = move_idx / taille_x;
+    int to_x = move_idx % taille_x;
+    
+    //mesure du temps de fin et calcul de la durée
+    std::string move = std::to_string(from_y) + (char)('a' + from_x) + 
+                       std::to_string(to_y) + (char)('a' + to_x);
     
     //mesure du temps de fin et calcul de la durée
     auto search_end = std::chrono::high_resolution_clock::now();
@@ -385,38 +436,31 @@ int genmove(int _board[], int _color, double time_limit_val = 1) {
     if(LOG_ACTIVE) {
         fprintf(stderr, "Profondeur atteinte: %d\n", reached_depth);
         fprintf(stderr, "Temps de recherche: %ld millisecondes\n", duration);
-        fprintf(stderr, "--- retourne le coup: %d\n", move);
+        fprintf(stderr, "--- retourne le coup: %s\n", move.c_str());
     }
     
     return move;
 }
 /*
  * g++ -Wall tic_tac_toc_player.cpp -o tic_tac_toc_player
- * to generate x move : ./a.out x.x...... x
- * to generate o move : ./a.out x.x...... o
+ * to generate x move : ./a.out @@@@@@@@@@@@@@@@@@@@....................oooooooooooooooooooo @ 1
+ * to generate o move : ./a.out @@@@@@@@@@@@@@@@@@@@....................oooooooooooooooooooo o 1
  * returns where to play
  */
 int main(int _ac, char** _av) {
-  if(_ac != 3) {
-    fprintf(stderr, "usage: %s STRBOARD TURN\n", _av[0]);
-    return 0;
-  }
-  /*
-  int move = ids(ttt_board, turn_board, time_limit, reached_depth);
-  int from_x = move / taille_x;
-  int from_y = move % taille_x;
-  int to_x = (move + direction) / taille_x;  // direction = -1 pour Blancs, +1 pour Noirs
-  int to_y = (move + direction) % taille_x;
-  printf("%d %d %d %d\n", from_x, from_y, to_x, to_y);
-  */
+    if(_ac != 4) {
+        fprintf(stderr, "usage: %s STRBOARD TURN TIME_LIMIT\n", _av[0]);
+        return 0;
+    }
   char* input_board = _av[1];
   int turn_board = WHITE;
   if(strcmp(_av[2],"@")==0) turn_board = BLACK;
+  double time_limit_val = atof(_av[3]); //limit de temps en secondes
   std::srand(std::time(0));
   int r = std::rand(); // first call to get more variable rand
   r++; // to avoid a warning :-)
   int ttt_board[taille_x * taille_y];
   init(input_board, ttt_board);
-  printf("%d\n", genmove(ttt_board, turn_board));
+  printf("%s\n", genmove(ttt_board, turn_board, time_limit_val).c_str());
   return 0;
 }
