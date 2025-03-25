@@ -22,7 +22,12 @@ int taille_y = 10;
  * breaktrough player 6*10
  * taille_x = 6
  * taille_y = 10
- * 
+ * ./a.out @@@@@@@@@@@@@@@@@@@@....................oooooooooooooooooooo o 1
+ * ./a.out @@@@@@@@@@@@@@@@@@@@....................oooooooooooooooooooo @ 1
+ * ./a.out @@@@@@@@@@@@@@@@@@@@....................oooooooooooooooooooo o 1
+
+
+ 
  */
 
 void init(char _strboard[], int _board[]) {
@@ -150,7 +155,7 @@ double dls(int _board[], int depth, int _color, bool& completed, int taille_plat
         return h(_board, _color, taille_plateau_x, taille_plateau_y);
     }
     
-    // Tester les conditions de fin
+    //conditions de fin
     if (is_a_win(_board, WHITE, taille_plateau_x, taille_plateau_y)) return 1000000.0;
     if (is_a_win(_board, BLACK, taille_plateau_x, taille_plateau_y)) return -1000000.0;
     
@@ -159,7 +164,7 @@ double dls(int _board[], int depth, int _color, bool& completed, int taille_plat
         return h(_board, _color, taille_plateau_x, taille_plateau_y);
     }
     
-    // Générer tous les coups possibles
+    //tous les coups possibles
     int moves[100][3]; // [indice_origine, indice_destination, capture]
     int nb_moves = 0;
     
@@ -177,29 +182,29 @@ double dls(int _board[], int depth, int _color, bool& completed, int taille_plat
                     if (_board[nidx] == EMPTY) {
                         moves[nb_moves][0] = idx;
                         moves[nb_moves][1] = nidx;
-                        moves[nb_moves][2] = 0; // pas de capture
+                        moves[nb_moves][2] = 0; //pas de capture
                         nb_moves++;
                     }
                 }
                 
-                // Capture diagonale gauche
+                //capture diagonale gauche
                 if (x > 0 && ny >= 0 && ny < taille_plateau_y) {
                     int nidx = ny * taille_plateau_x + (x-1);
                     if (_board[nidx] != EMPTY && _board[nidx] != _color) {
                         moves[nb_moves][0] = idx;
                         moves[nb_moves][1] = nidx;
-                        moves[nb_moves][2] = 1; // capture
+                        moves[nb_moves][2] = 1; //capture
                         nb_moves++;
                     }
                 }
                 
-                // Capture diagonale droite
+                //capture diagonale droite
                 if (x < taille_plateau_x-1 && ny >= 0 && ny < taille_plateau_y) {
                     int nidx = ny * taille_plateau_x + (x+1);
                     if (_board[nidx] != EMPTY && _board[nidx] != _color) {
                         moves[nb_moves][0] = idx;
                         moves[nb_moves][1] = nidx;
-                        moves[nb_moves][2] = 1; // capture
+                        moves[nb_moves][2] = 1; //capture
                         nb_moves++;
                     }
                 }
@@ -209,7 +214,7 @@ double dls(int _board[], int depth, int _color, bool& completed, int taille_plat
     
     if (nb_moves == 0) {
         completed = true;
-        return (_color == WHITE) ? -1000000.0 : 1000000.0; // Pas de coup possible = défaite
+        return (_color == WHITE) ? -1000000.0 : 1000000.0; //pas de coup possible = défaite
     }
 
     bool is_white = (_color == WHITE);
@@ -220,7 +225,7 @@ double dls(int _board[], int depth, int _color, bool& completed, int taille_plat
         int next_board[taille_x * taille_y];
         memcpy(next_board, _board, sizeof(int) * 6 * 10);
         
-        // Appliquer le coup
+        //applique le coup
         int from = moves[i][0];
         int to = moves[i][1];
         next_board[from] = EMPTY;
@@ -253,7 +258,7 @@ int ids(int _board[], int _color, double _time_limit, int& reached_depth, int ta
     int best_move = -1;
     reached_depth = 0;
     
-    // Générer tous les coups possibles
+    //tous les coups possibles
     int moves[100][3]; // [indice_origine, indice_destination, capture]
     int nb_moves = 0;
     
@@ -261,10 +266,10 @@ int ids(int _board[], int _color, double _time_limit, int& reached_depth, int ta
         for (int x = 0; x < taille_plateau_x; x++) {
             int idx = y * taille_plateau_x + x;
             if (_board[idx] == _color) {
-                // Direction de déplacement selon la couleur
+                //direction de déplacement selon la couleur
                 int dy = (_color == WHITE) ? -1 : 1;
                 
-                // Avancer tout droit
+                //avance tout droit
                 int ny = y + dy;
                 if (ny >= 0 && ny < taille_plateau_y) {
                     int nidx = ny * taille_plateau_x + x;
@@ -276,7 +281,7 @@ int ids(int _board[], int _color, double _time_limit, int& reached_depth, int ta
                     }
                 }
                 
-                // Capture diagonale gauche
+                //capture diagonale gauche
                 if (x > 0 && ny >= 0 && ny < taille_plateau_y) {
                     int nidx = ny * taille_plateau_x + (x-1);
                     if (_board[nidx] != EMPTY && _board[nidx] != _color) {
@@ -287,7 +292,7 @@ int ids(int _board[], int _color, double _time_limit, int& reached_depth, int ta
                     }
                 }
                 
-                // Capture diagonale droite
+                //capture diagonale droite
                 if (x < taille_plateau_x-1 && ny >= 0 && ny < taille_plateau_y) {
                     int nidx = ny * taille_plateau_x + (x+1);
                     if (_board[nidx] != EMPTY && _board[nidx] != _color) {
@@ -303,7 +308,7 @@ int ids(int _board[], int _color, double _time_limit, int& reached_depth, int ta
     
     if (nb_moves == 0) return -1;
     
-    // Choisir un coup aléatoire par défaut
+    //choix d'un coup aléatoire par défaut
     best_move = rand() % nb_moves;
     
     for (int depth = 1; ; depth++) {
@@ -316,7 +321,7 @@ int ids(int _board[], int _color, double _time_limit, int& reached_depth, int ta
             int next_board[taille_x * taille_y];
             memcpy(next_board, _board, sizeof(int) * 6 * 10);
             
-            // Appliquer le coup
+            //applicat le coup
             int from = moves[i][0];
             int to = moves[i][1];
             next_board[from] = EMPTY;
@@ -345,8 +350,8 @@ int ids(int _board[], int _color, double _time_limit, int& reached_depth, int ta
         if (is_time_expired()) break;
     }
     
-    // Retourner le meilleur coup trouvé
-    return moves[best_move][1]; // Retourner la position 'destination'
+    //return le meilleur coup trouvé
+    return moves[best_move][1]; //return la position 'destination'
 }
 // Fonction de génération de coup pour le jeu Breakthrough
 int genmove(int _board[], int _color, double time_limit_val = 1) {
@@ -355,24 +360,24 @@ int genmove(int _board[], int _color, double time_limit_val = 1) {
         fprintf(stderr, "couleur : %d (1=BLANC, 2=NOIR)\n", _color);
     }
     
-    // Mesure du temps de départ
+    //temps de départ
     auto search_start = std::chrono::high_resolution_clock::now();
     
-    // Compte le nombre de pièces restantes pour ajuster le temps de réflexion
+    //le nombre de pièces restantes pour ajuster le temps de réflexion
     int nb_pieces = 0;
     for(int i = 0; i < taille_x * taille_y; i++) {
         if(_board[i] != EMPTY) nb_pieces++;
     }
     
-    // Ajustement du temps limite en fonction de l'avancement de la partie
-    // Moins de temps en fin de partie où les choix sont plus limités
+    //ajustement du temps limite en fonction de l'avancement de la partie
+    //moin de temps en fin de partie où les choix sont plus limités
     if(nb_pieces < 10) time_limit_val = 0.2;
     
     // Appel à la recherche itérative avec approfondissement
     int reached_depth;
     int move = ids(_board, _color, time_limit_val, reached_depth);
     
-    // Mesure du temps de fin et calcul de la durée
+    //mesure du temps de fin et calcul de la durée
     auto search_end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(search_end - search_start).count();
     
