@@ -48,10 +48,10 @@ struct Move {
     }
 };
 
-// Déclaration anticipée (forward declaration)
+
 std::string convert_move_to_string(const Move& move, int rows, int cols);
 
-// Fonction de débogage pour afficher les mouvements légaux
+// Afficher les mouvements légaux
 void print_legal_moves(const std::vector<Move>& moves, int rows, int cols) {
     fprintf(stderr, "Mouvements légaux (%zu):\n", moves.size());
     for (size_t i = 0; i < moves.size(); i++) {
@@ -224,7 +224,7 @@ public:
         
         if (best_child == nullptr && LOG_ACTIVE) {
             fprintf(stderr, "Avertissement: select_best_child n'a trouvé aucun enfant avec visites > 0\n");
-            // Si aucun nœud n'a de visites, prenons le premier
+            // Si aucun nœud n'a de visites, on prend le premier
             if (!children.empty()) {
                 best_child = children[0];
                 fprintf(stderr, "Utilisation du premier enfant disponible\n");
