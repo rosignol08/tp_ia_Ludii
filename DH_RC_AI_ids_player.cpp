@@ -10,18 +10,25 @@
 
 
 /*
+Breakthrough IDS Player
 ids player pour breaktrough
 usage: ./a.out TAILLE_X TAILLE_Y STRBOARD TURN TIME_LIMIT
 ./a.out 10 6 @@@@@@@@@@@@@@@@@@@@....................oooooooooooooooooooo @ 1.0
 ./a.out 10 6 @@@@@@@@@@@@@@@@@@@@....................oooooooooooooooooooo o 1.0
 
-*/
+Compilation:
+g++ -Wall -std=c++11 DH_RC_AI_ids_player.cpp -o DH_RC_AI_ids_player
+Utilisation en mode tournoi:
+./DH_RC_AI_ids_player TAILLE_X TAILLE_Y BOARD_STR TURN MAX_TIME
+Exemple pour 6x3: ./DH_RC_AI_ids_player 6 3 @@@@@@......oooooo o 1.0
+Exemple pour 6x10: ./DH_RC_AI_ids_player 6 10 @@@@@@@@@@@@@@@@@@@@....................oooooooooooooooooooo o 1.0
+ */
 
 bt_t B;
 int taille_x = 6;
 int taille_y = 10;
 int branches_count = 0;
-bool verbose = true; //debug
+bool verbose = false; //debug
 //une variable globale pour suivre le temps
 std::chrono::steady_clock::time_point start_time;
 //@@@@@@@@@@@@@@@@@@@@....................oooooooooooooooooooo
@@ -39,12 +46,12 @@ void init(char _strboard[], bt_t& board) {
     // . sont les cases vides
     /*
       a b c d e f g h i j 
+    6 @ @ @ @ @ @ @ @ @ @ 
     5 @ @ @ @ @ @ @ @ @ @ 
-    4 @ @ @ @ @ @ @ @ @ @ 
+    4 . . . . . . . . . . 
     3 . . . . . . . . . . 
-    2 . . . . . . . . . . 
+    2 o o o o o o o o o o 
     1 o o o o o o o o o o 
-    0 o o o o o o o o o o 
     */
    int x, y;
    
