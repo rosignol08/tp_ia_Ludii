@@ -37,7 +37,6 @@
     "drawCornerConvexCells": false,
     "LoadedFromMemory": false,
     "SearchTime_2": 1,
-    "SearchTime_1": 1,
     "CursorTooltip": false,
     "drawOuterCells": false,
     "NoRepetition": false,
@@ -98,7 +97,7 @@
     "drawRightVertices": false,
     "drawCentreEdges": false,
     "MenuNames_0": "Human",
-    "MenuNames_1": "From JAR",
+    "MenuNames_1": "Human",
     "testLudeme2": "",
     "MenuNames_2": "From JAR",
     "testLudeme3": "",
@@ -131,14 +130,9 @@
     "ShowPossibleMoves": false,
     "ShowContainerIndices": false,
     "drawPerimeterCells": false,
-    "AI_1": {"AI": {
+    "AI_2": {"AI": {
         "Class Name": "breakthrough.BreakthroughIDSPlayer",
         "JAR File": "/home/romaric/Bureau/demo-ludii-ttt-AI-cpp-python/tp_ia_Ludii/BreakthroughIDSPlayer.jar",
-        "algorithm": "From JAR"
-    }},
-    "AI_2": {"AI": {
-        "Class Name": "breakthrough.BreakthroughMCTSPlayer",
-        "JAR File": "/home/romaric/Bureau/demo-ludii-ttt-AI-cpp-python/tp_ia_Ludii/BreakthroughMCTSPlayer.jar",
         "algorithm": "From JAR"
     }},
     "ShowLastMove": false,
@@ -162,7 +156,7 @@
     "FrameLocX": 83,
     "AnimationVisualsType": "None",
     "FrameLocY": 43,
-    "LastSelectedJarFile": "/home/romaric/Bureau/demo-ludii-ttt-AI-cpp-python/tp_ia_Ludii/BreakthroughMCTSPlayer.jar",
+    "LastSelectedJarFile": "/home/romaric/Bureau/demo-ludii-ttt-AI-cpp-python/tp_ia_Ludii/BreakthroughIDSPlayer.jar",
     "networkRefresh": false,
     "editorParseText": true,
     "TickLength": 0.1,

@@ -82,44 +82,67 @@ bool is_time_expired() {
     return elapsed >= time_limit;
 }
 
-//fonction heuristique qui prend en compte la taille du plateau
+//fonction heuristique améliorée pour un jeu plus offensif et défensif
 double h(const bt_t& board) {
     double score = 0.0;
-    
-    //boucle pour chaque position sur le plateau
+    int last_row = board.nbl - 1;
+    double advancement_weight = 3.0; // Poids pour favoriser l'avancement
+    double capture_bonus = 5.0; // Bonus pour capturer un pion adverse
+    double defense_penalty = 10.0; // Pénalité pour un pion adverse proche de vos lignes
+
     for(int i = 0; i < board.nbl; i++) {
         for(int j = 0; j < board.nbc; j++) {
             if(board.board[i][j] == WHITE) {
-                //la valeur de base d'une pièce dépend de sa position
-                double piece_value = (board.nbl + 1) * (board.nbl - i);
+                // Favorise les pions blancs avancés
+                double piece_value = advancement_weight * (board.nbl - i);
                 score += piece_value;
-                
-                //bonus pour la protection mutuelle
-                if(i+1 < board.nbl && j+1 < board.nbc && board.board[i+1][j+1] == WHITE) 
-                    score += board.nbl;
-                if(i+1 < board.nbl && j-1 >= 0 && board.board[i+1][j-1] == WHITE) 
-                    score += board.nbl;
-                
-                //bonus pour les menaces
-                if(i-1 >= 0 && j+1 < board.nbc && board.board[i-1][j+1] == BLACK) 
-                    score += 2 * board.nbl;
-                if(i-1 >= 0 && j-1 >= 0 && board.board[i-1][j-1] == BLACK) 
-                    score += 2 * board.nbl;
+
+                // Bonus pour attaque possible
+                if(i-1 >= 0 && j+1 < board.nbc && board.board[i-1][j+1] == BLACK) {
+                    score += capture_bonus;
+                }
+                if(i-1 >= 0 && j-1 >= 0 && board.board[i-1][j-1] == BLACK) {
+                    score += capture_bonus;
+                }
+
+                // Bonus pour protection
+                if(i+1 < board.nbl && j+1 < board.nbc && board.board[i+1][j+1] == WHITE) {
+                    score += 2.0;
+                }
+                if(i+1 < board.nbl && j-1 >= 0 && board.board[i+1][j-1] == WHITE) {
+                    score += 2.0;
+                }
+
+                // Grosse pénalité si un pion noir est proche (défendre)
+                if((i <= 1) && (board.turn % 2 == 1)) {
+                    score -= defense_penalty;
+                }
             }
             else if(board.board[i][j] == BLACK) {
-                //même logique pour les pièces noires
-                double piece_value = (board.nbl + 1) * i;
+                // Favorise les pions noirs avancés
+                double piece_value = advancement_weight * i;
                 score -= piece_value;
-                
-                if(i-1 >= 0 && j+1 < board.nbc && board.board[i-1][j+1] == BLACK) 
-                    score -= board.nbl;
-                if(i-1 >= 0 && j-1 >= 0 && board.board[i-1][j-1] == BLACK) 
-                    score -= board.nbl;
-                
-                if(i+1 < board.nbl && j+1 < board.nbc && board.board[i+1][j+1] == WHITE) 
-                    score -= 2 * board.nbl;
-                if(i+1 < board.nbl && j-1 >= 0 && board.board[i+1][j-1] == WHITE) 
-                    score -= 2 * board.nbl;
+
+                // Bonus pour attaque possible
+                if(i+1 < board.nbl && j+1 < board.nbc && board.board[i+1][j+1] == WHITE) {
+                    score -= capture_bonus;
+                }
+                if(i+1 < board.nbl && j-1 >= 0 && board.board[i+1][j-1] == WHITE) {
+                    score -= capture_bonus;
+                }
+
+                // Bonus pour protection
+                if(i-1 >= 0 && j+1 < board.nbc && board.board[i-1][j+1] == BLACK) {
+                    score -= 2.0;
+                }
+                if(i-1 >= 0 && j-1 >= 0 && board.board[i-1][j-1] == BLACK) {
+                    score -= 2.0;
+                }
+
+                // Grosse pénalité si un pion blanc est proche (défendre)
+                if((i >= last_row - 1) && (board.turn % 2 == 0)) {
+                    score += defense_penalty;
+                }
             }
         }
     }
@@ -247,7 +270,7 @@ bt_move_t ids(bt_t& board, double max_time, int& reached_depth) {
     
     return best_move;
 }
-std::string convert_move_to_string(const bt_move_t& move, int rows, int cols) {
+std::string convert_move_to_string(const bt_move_t& move, int rows) {
     // Position de départ
     int from_row = move.line_i;
     int from_col = move.col_i;

@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -Wall -Wextra -O3
+CXXFLAGS = -Wall -Wextra -O2
 
 # Nom des exécutables
 EXEC1 = DH_RC_AI_ids_player
