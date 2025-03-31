@@ -7,7 +7,15 @@
 #include <iostream>
 #include <chrono>
 #include "mybt.h"
+#include <unordered_map>
 
+//operator pour bt_move_t
+bool operator==(const bt_move_t& lhs, const bt_move_t& rhs) {
+    return lhs.line_i == rhs.line_i &&
+           lhs.col_i == rhs.col_i &&
+           lhs.line_f == rhs.line_f &&
+           lhs.col_f == rhs.col_f;
+}
 
 /*
 Breakthrough IDS Player
@@ -22,7 +30,44 @@ Utilisation en mode tournoi:
 ./DH_RC_AI_ids_player TAILLE_X TAILLE_Y BOARD_STR TURN MAX_TIME
 Exemple pour 6x3: ./DH_RC_AI_ids_player 6 3 @@@@@@......oooooo o 1.0
 Exemple pour 6x10: ./DH_RC_AI_ids_player 6 10 @@@@@@@@@@@@@@@@@@@@....................oooooooooooooooooooo o 1.0
- */
+*/
+
+struct HashEntry {
+    double value;
+    int depth;
+};
+
+//la table de hachage
+std::unordered_map<uint64_t, HashEntry> transposition_table;
+
+//pour calculer le hash avec la methode de Zobrist https://en.wikipedia.org/wiki/Zobrist_hashing
+uint64_t zobrist_hash(const bt_t& board) {
+    static uint64_t zobrist_table[10][10][3] = {}; //
+    static bool initialized = false;
+
+    if (!initialized) {
+        std::srand(42); //la seed pour reproduire les mêmes valeurs
+        for (int i = 0; i < 10; ++i) {
+            for (int j = 0; j < 10; ++j) {
+                for (int k = 0; k < 3; ++k) {
+                    zobrist_table[i][j][k] = ((uint64_t)std::rand() << 32) | std::rand();
+                }
+            }
+        }
+        initialized = true;
+    }
+
+    uint64_t hash = 0;
+    for (int i = 0; i < board.nbl; ++i) {
+        for (int j = 0; j < board.nbc; ++j) {
+            int piece = board.board[i][j];
+            if (piece != EMPTY) {
+                hash ^= zobrist_table[i][j][piece];
+            }
+        }
+    }
+    return hash;
+}
 
 bt_t B;
 int taille_y = 10;
@@ -82,7 +127,7 @@ bool is_time_expired() {
     return elapsed >= time_limit;
 }
 
-//fonction heuristique améliorée pour un jeu plus offensif et défensif
+//fonction heuristique qui prend en compte la taille du plateau
 double h(const bt_t& board) {
     double score = 0.0;
     int last_row = board.nbl - 1;
@@ -94,8 +139,7 @@ double h(const bt_t& board) {
         for(int j = 0; j < board.nbc; j++) {
             if(board.board[i][j] == WHITE) {
                 // Favorise les pions blancs avancés
-                //double piece_value = advancement_weight * (board.nbl - i);
-                double piece_value = advancement_weight * pow(1.5, board.nbl - i);
+                double piece_value = advancement_weight * (board.nbl - i);
                 score += piece_value;
 
                 // Bonus pour attaque possible
@@ -149,10 +193,9 @@ double h(const bt_t& board) {
     }
     return score;
 }
-//std::unordered_map<uint64_t, double> transposition_table;
 
 //Depth Limited Search retourne un bool pour indiquer si la recherche a été complétée
-double dls(bt_t& board, int depth, bool& completed) {
+double dls(bt_t& board, int depth, bool& completed, std::unordered_map<uint64_t, HashEntry>& transposition_table) {
     //vérifie d'abord si le temps est écoulé
     if(is_time_expired()) {
         completed = false;
@@ -161,21 +204,38 @@ double dls(bt_t& board, int depth, bool& completed) {
         }
         return h(board);
     }
-    
+    uint64_t hash = zobrist_hash(board);
+
+    //si l'état a déjà été évalué
+    if (transposition_table.count(hash) && transposition_table[hash].depth >= depth) {
+        completed = true;
+        return transposition_table[hash].value;
+    }
+
     //test conditions de fin
     int result = board.endgame();
-    if(result == WHITE) return 1000000.0;
-    if(result == BLACK) return -1000000.0;
+    if(result == WHITE) {
+        completed = true;
+        return 1000000.0;
+    }
+    if(result == BLACK){
+        completed = true;//TODO voir si ça marche
+        return -1000000.0;
+    }
     
     if(depth == 0) {
         completed = true;
-        return h(board);
+        double eval = h(board);
+        transposition_table[hash] = {eval, depth}; // Stocker le résultat
+        return eval;
     }
     
     board.update_moves();
     if(board.nb_moves == 0) {
         completed = true;
-        return (board.turn % 2 == 0) ? -1000000.0 : 1000000.0;
+        double eval = (board.turn % 2 == 0) ? -1000000.0 : 1000000.0;
+        transposition_table[hash] = {eval, depth}; // Stocker le résultat
+        return eval;
     }
 
     bool is_white = (board.turn % 2 == 0);
@@ -188,7 +248,7 @@ double dls(bt_t& board, int depth, bool& completed) {
         next_board.play(board.moves[i]);
         
         bool move_completed;
-        double value = dls(next_board, depth-1, move_completed);
+        double value = dls(next_board, depth-1, move_completed, transposition_table);
         
         if(move_completed) any_move_completed = true;
         
@@ -217,6 +277,8 @@ bt_move_t ids(bt_t& board, double max_time, int& reached_depth) {
     reached_depth = 0;
     branches_count = 0;
     
+    transposition_table.clear();
+
     bt_move_t best_move = board.moves[0];
     bool white = (board.turn % 2 == 0);
     double best_value = white ? -1000000.0 : 1000000.0;
@@ -247,7 +309,7 @@ bt_move_t ids(bt_t& board, double max_time, int& reached_depth) {
             next_board.play(board.moves[i]);
             
             bool move_completed;
-            double value = dls(next_board, d-1, move_completed);
+            double value = dls(next_board, d-1, move_completed, transposition_table);
             
             if(move_completed) {
                 depth_completed = true;
@@ -270,6 +332,35 @@ bt_move_t ids(bt_t& board, double max_time, int& reached_depth) {
         }
     }
     
+    //verif si le coup IDS et fallback si nécessaire
+    bool is_valid = false;
+    for (int i = 0; i < board.nb_moves; i++) {
+        if (board.moves[i] == best_move) {
+            is_valid = true;
+            break;
+        }
+    }
+
+    if (!is_valid) {
+        //fprintf(stderr, "IDS a retourné un coup invalide, sélection d'un coup par fallback\n");
+        for (int row = 5; row >= 0; row--) {
+            for (int col = 0; col < 10; col++) {
+                if (board.board[row][col] == WHITE) {
+                    int new_rows[] = {row + 1, row + 1, row + 1};
+                    int new_cols[] = {col, col - 1, col + 1};
+                    for (int k = 0; k < 3; k++) {
+                        bt_move_t potential_move = {row, col, new_rows[k], new_cols[k]};
+                        if (board.can_play(potential_move)) {
+                            best_move = potential_move;
+                            //fprintf(stderr, "Fallback move: %d%c -> %d%c\n", row + 1, 'a' + col, new_rows[k] + 1, 'a' + new_cols[k]);
+                            return best_move;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     return best_move;
 }
 std::string convert_move_to_string(const bt_move_t& move, int rows) {
@@ -366,8 +457,8 @@ int main(int _ac, char** _av) {
     
     char* input_board = _av[1];
     int turn_board = WHITE;
-    if(strcmp(_av[2],"@")==0) turn_board = BLACK;
-    else if(strcmp(_av[2],"o")==0) turn_board = WHITE;
+    if(strcmp(_av[2],"o")==0) turn_board = BLACK;
+    else if(strcmp(_av[2],"@")==0) turn_board = WHITE;
     double time_limit_val = atof(_av[3]); //limite de temps en secondes
     if (strlen(input_board) == 18) {
         taille_x = 3;

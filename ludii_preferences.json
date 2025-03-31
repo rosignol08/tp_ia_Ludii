@@ -64,7 +64,7 @@
     "drawCornersCells": false,
     "OptionStrings": [
         "Board/Rectangle",
-        "Board Size/6x10"
+        "Board Size/6x3"
     ],
     "drawLeftEdges": false,
     "drawAngledEdges": false,
@@ -159,9 +159,9 @@
     "tabFontSize": 13,
     "ShowCellIndices": false,
     "drawPerimeterEdges": false,
-    "FrameLocX": 436,
+    "FrameLocX": 254,
     "AnimationVisualsType": "None",
-    "FrameLocY": 87,
+    "FrameLocY": 211,
     "LastSelectedJarFile": "/home/romaric/Bureau/demo-ludii-ttt-AI-cpp-python/tp_ia_Ludii/BreakthroughMCTSPlayer.jar",
     "networkRefresh": false,
     "editorParseText": true,
