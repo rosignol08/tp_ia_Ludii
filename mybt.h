@@ -3,10 +3,10 @@
 #include <cstdio>
 #include <cstdlib>
 #include <random>
-#define WHITE 0
-#define BLACK 1
-#define EMPTY 2
-char* cboard = (char*)"o@.";
+#define EMPTY 0
+#define WHITE 1
+#define BLACK 2
+char* cboard = (char*)".o@";
 
 // print black in red (as bg is black... black is printed in red)
 // comment the following #define USE_COLOR to print without color

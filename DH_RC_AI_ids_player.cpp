@@ -94,7 +94,8 @@ double h(const bt_t& board) {
         for(int j = 0; j < board.nbc; j++) {
             if(board.board[i][j] == WHITE) {
                 // Favorise les pions blancs avancés
-                double piece_value = advancement_weight * (board.nbl - i);
+                //double piece_value = advancement_weight * (board.nbl - i);
+                double piece_value = advancement_weight * pow(1.5, board.nbl - i);
                 score += piece_value;
 
                 // Bonus pour attaque possible
@@ -148,6 +149,7 @@ double h(const bt_t& board) {
     }
     return score;
 }
+//std::unordered_map<uint64_t, double> transposition_table;
 
 //Depth Limited Search retourne un bool pour indiquer si la recherche a été complétée
 double dls(bt_t& board, int depth, bool& completed) {
@@ -364,8 +366,8 @@ int main(int _ac, char** _av) {
     
     char* input_board = _av[1];
     int turn_board = WHITE;
-    if(strcmp(_av[2],"o")==0) turn_board = BLACK;
-    else if(strcmp(_av[2],"@")==0) turn_board = WHITE;
+    if(strcmp(_av[2],"@")==0) turn_board = BLACK;
+    else if(strcmp(_av[2],"o")==0) turn_board = WHITE;
     double time_limit_val = atof(_av[3]); //limite de temps en secondes
     if (strlen(input_board) == 18) {
         taille_x = 3;
