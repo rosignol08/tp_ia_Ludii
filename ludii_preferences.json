@@ -35,7 +35,6 @@
     "drawPhasesVertices": false,
     "drawHorizontalEdges": false,
     "drawCornerConvexCells": false,
-    "Show Track Track1B": false,
     "LoadedFromMemory": false,
     "SearchTime_2": 1,
     "SearchTime_1": 1,
@@ -44,7 +43,6 @@
     "NoRepetition": false,
     "drawCenterCells": false,
     "ShowConnections": false,
-    "Show Track Track1F": false,
     "drawMajorVertices": false,
     "SavedLudLastModifiedTime": "2025-03-24T12:32:45.973668201Z",
     "drawCornerConvexVertices": false,
@@ -66,7 +64,7 @@
     "drawCornersCells": false,
     "OptionStrings": [
         "Board/Rectangle",
-        "Board Size/6x3"
+        "Board Size/6x10"
     ],
     "drawLeftEdges": false,
     "drawAngledEdges": false,
@@ -127,20 +125,17 @@
     "devMode": false,
     "saveTrialAfterMove": false,
     "CandidateMoves": false,
-    "LastSelectedGameFile": "/home/romaric/Bureau/demo-ludii-ttt-AI-cpp-python/tp_ia_Ludii/BreakthroughVariant_6x3_6x10.lud",
     "IllegalMoves": false,
     "drawRightEdges": false,
     "drawMinorCells": false,
     "ShowPossibleMoves": false,
     "ShowContainerIndices": false,
     "drawPerimeterCells": false,
-    "Show Track Track2F": false,
     "AI_1": {"AI": {
         "Class Name": "breakthrough.BreakthroughIDSPlayer",
         "JAR File": "/home/romaric/Bureau/demo-ludii-ttt-AI-cpp-python/tp_ia_Ludii/BreakthroughIDSPlayer.jar",
         "algorithm": "From JAR"
     }},
-    "Show Track Track2B": false,
     "AI_2": {"AI": {
         "Class Name": "breakthrough.BreakthroughMCTSPlayer",
         "JAR File": "/home/romaric/Bureau/demo-ludii-ttt-AI-cpp-python/tp_ia_Ludii/BreakthroughMCTSPlayer.jar",
@@ -164,9 +159,9 @@
     "tabFontSize": 13,
     "ShowCellIndices": false,
     "drawPerimeterEdges": false,
-    "FrameLocX": 273,
+    "FrameLocX": 83,
     "AnimationVisualsType": "None",
-    "FrameLocY": 151,
+    "FrameLocY": 43,
     "LastSelectedJarFile": "/home/romaric/Bureau/demo-ludii-ttt-AI-cpp-python/tp_ia_Ludii/BreakthroughMCTSPlayer.jar",
     "networkRefresh": false,
     "editorParseText": true,

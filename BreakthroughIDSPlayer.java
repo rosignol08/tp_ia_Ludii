@@ -169,11 +169,11 @@ public class BreakthroughIDSPlayer extends AI
         // Construire la commande pour exécuter le programme
         ProcessBuilder processBuilder = new ProcessBuilder(
             System.getProperty("user.dir") + "/" + ids_player_str,
-            Integer.toString(taille_x),
-            Integer.toString(taille_y),
+            //Integer.toString(taille_x),
+            //Integer.toString(taille_y),
             boardStr,
             turn,
-            Double.toString(maxTime * 0.9)  // Utiliser 90% du temps maximal pour permettre le retour
+            Double.toString(maxTime * 0.95)  // Utiliser 90% du temps maximal pour permettre le retour
         );
         
         processBuilder.redirectErrorStream(false);

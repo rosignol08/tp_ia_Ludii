@@ -25,8 +25,8 @@ Exemple pour 6x10: ./DH_RC_AI_ids_player 6 10 @@@@@@@@@@@@@@@@@@@@..............
  */
 
 bt_t B;
-int taille_x = 6;
 int taille_y = 10;
+int taille_x = 6;
 int branches_count = 0;
 bool verbose = false; //debug
 //une variable globale pour suivre le temps
@@ -34,10 +34,10 @@ std::chrono::steady_clock::time_point start_time;
 //@@@@@@@@@@@@@@@@@@@@....................oooooooooooooooooooo
 double time_limit;
 void init(char _strboard[], bt_t& board) {
-    board.init(taille_x, taille_y);  // Initialisation avec les dimensions
+    board.init(taille_y, taille_x);  // Initialisation avec les dimensions
 
     if (verbose) {
-        fprintf(stderr, "Initialisation du plateau %dx%d\n", taille_y, taille_x);
+        fprintf(stderr, "Initialisation du plateau %dx%d\n", taille_x, taille_y);
     }
     
     // Le tableau d'entrée est organisé ligne par ligne
@@ -53,26 +53,27 @@ void init(char _strboard[], bt_t& board) {
     2 o o o o o o o o o o 
     1 o o o o o o o o o o 
     */
-   int x, y;
    
-    for (x = 0; x < taille_x; x++) {
-        for (y = 0; y < taille_y; y++) {
-            int index = x * taille_y + y; // Calcul de l'index dans la chaîne
-            if (_strboard[index] == '@') {
-                board.board[x][y] = BLACK;
-            } else if (_strboard[index] == 'o') {
-                board.board[x][y] = WHITE;
-            } else {
-                board.board[x][y] = EMPTY;
-            }
-        }
-    }
-    if (verbose) {
-        fprintf(stderr, "État du plateau après initialisation:\n");
-        board.print_board(stderr);
-    }
+    
+   int idx = 0;
+   for (int y = 0; y < taille_y; y++) {
+       for (int x = 0; x < taille_x; x++) {
+           if (_strboard[idx] == '@') {
+               board.board[y][x] = BLACK;
+           } else if (_strboard[idx] == 'o') {
+               board.board[y][x] = WHITE;
+           } else {
+               board.board[y][x] = EMPTY;
+           }
+           idx++;
+       }
+   }
+   
+   if (verbose) {
+       fprintf(stderr, "État du plateau après initialisation:\n");
+       board.print_board(stderr);
+   }
 }
-
 
 //ça c'est une fonction qui vérifie si on a dépassé la limite de temps
 bool is_time_expired() {
@@ -130,6 +131,9 @@ double dls(bt_t& board, int depth, bool& completed) {
     //vérifie d'abord si le temps est écoulé
     if(is_time_expired()) {
         completed = false;
+        if (verbose) {
+            fprintf(stderr, "Temps écoulé, retour à l'évaluation heuristique\n");
+        }
         return h(board);
     }
     
@@ -168,6 +172,11 @@ double dls(bt_t& board, int depth, bool& completed) {
         } else {
             best_value = std::min(best_value, value);
         }
+        //if (verbose) {
+        //    fprintf(stderr, "Coup évalué: (%d,%d) -> (%d,%d), Valeur: %f\n",
+        //            board.moves[i].line_i, board.moves[i].col_i,
+        //            board.moves[i].line_f, board.moves[i].col_f, value);
+        //}
         
         if(!move_completed) break;
     }
@@ -238,6 +247,30 @@ bt_move_t ids(bt_t& board, double max_time, int& reached_depth) {
     
     return best_move;
 }
+std::string convert_move_to_string(const bt_move_t& move, int rows, int cols) {
+    // Position de départ
+    int from_row = move.line_i;
+    int from_col = move.col_i;
+    
+    // Position d'arrivée
+    int to_row = move.line_f;
+    int to_col = move.col_f;
+    
+    // Convertir en format LI-CI-LF-CF
+    // Les lignes dans notre modèle sont de 0 (haut) à 5 (bas)
+    // Pour les lignes: convertir de 0-5 à 6-1 (inverser et décaler)
+    int li = rows - from_row;
+    int lf = rows - to_row;
+    
+    // Pour les colonnes: a est à gauche (colonne 0) et j est à droite (colonne 9) pour 6x10
+    char ci = 'a' + from_col;
+    char cf = 'a' + to_col;
+    
+    // Construire la chaîne
+    char result[5];
+    sprintf(result, "%d%c%d%c", li, ci, lf, cf);
+    return std::string(result);
+}
 // Implémentation de genmove compatible avec le premier programme
 std::string genmove(bt_t& board, int _color, double time_limit_val = 1) {
     // Configurer le tour du joueur correctement
@@ -266,47 +299,72 @@ std::string genmove(bt_t& board, int _color, double time_limit_val = 1) {
     //IDS pour trouver le meilleur coup
     int reached_depth;
     bt_move_t move = ids(board, time_limit_val, reached_depth);
-    
+    bool valid = false;
+    for (int i = 0; i < board.nb_moves; i++) {
+        if (board.moves[i].line_i == move.line_i &&
+            board.moves[i].col_i == move.col_i &&
+            board.moves[i].line_f == move.line_f &&
+            board.moves[i].col_f == move.col_f) {
+            valid = true;
+            break;
+        }
+    }
+
+    if (!valid) {
+        fprintf(stderr, "Problème : le coup sélectionné par IDS (%d,%d) -> (%d,%d) n'est pas un coup valide\n",
+                move.line_i, move.col_i, move.line_f, move.col_f);
+    }
+
     if (verbose) {
-        fprintf(stderr, "Meilleur coup trouvé: (%d,%d) -> (%d,%d)\n",
-               move.line_i, move.col_i, move.line_f, move.col_f);
+        //fprintf(stderr, "Meilleur coup trouvé: %s\n", move);
         fprintf(stderr, "Profondeur atteinte: %d\n", reached_depth);
     }
     
     //conversion du move en notation du premier programme
-    std::string move_str = std::to_string(move.line_i + 1) + 
-                          (char)('a' + move.col_i) + 
-                          std::to_string(move.line_f + 1) + 
-                          (char)('a' + move.col_f);
-    
+    //std::strinfg move_str = std::to_string(move.line_i + 1) + (char)('a' + move.col_i) + std::to_string(move.line_f + 1) + (char)('a' + move.col_f);
+                          // conversion du move en notation standard LI-CI-LF-CF
+    std::string move_str = std::to_string(board.nbl - move.line_i) + (char)('a' + move.col_i) + std::to_string(board.nbl - move.line_f) +(char)('a' + move.col_f);
+    //std::string move_str = convert_move_to_string(move, taille_y, taille_x);
     if (verbose) {
         fprintf(stderr, "Format de sortie: %s\n", move_str.c_str());
     }
-    
+    //printf ("%s\n", move_str.c_str());
     return move_str;
 }
 
 int main(int _ac, char** _av) {
-    if(_ac != 6) {
-        fprintf(stderr, "usage: %s TAILLE_X TAILLE_Y STRBOARD TURN TIME_LIMIT\n", _av[0]);
-        return 0;
+    if (_ac != 4) {
+        fprintf(stderr, "Usage: %s STRBOARD TURN TIME_LIMIT\n", _av[0]);
+        return 1; // Return an error code
     }
     
-    taille_x = atoi(_av[1]); //recupere la taille x
-    taille_y = atoi(_av[2]); //recupere la taille y
-    char* input_board = _av[3];
-    int turn_board = WHITE;
-    if(strcmp(_av[4],"@")==0) turn_board = BLACK;
-    else if(strcmp(_av[4],"o")==0) turn_board = WHITE;
-    double time_limit_val = atof(_av[5]); //limite de temps en secondes
     
+    char* input_board = _av[1];
+    int turn_board = WHITE;
+    if(strcmp(_av[2],"o")==0) turn_board = BLACK;
+    else if(strcmp(_av[2],"@")==0) turn_board = WHITE;
+    double time_limit_val = atof(_av[3]); //limite de temps en secondes
+    if (strlen(input_board) == 18) {
+        taille_x = 3;
+        taille_y = 6;
+        } else {
+        taille_x = 10;
+        taille_y = 6;
+    }
     std::srand(std::time(0));
     
     //initialisation du board
     init(input_board, B);
     
     //génération et affichage du coup
-    printf("%s\n", genmove(B, turn_board, time_limit_val).c_str());
+    std::string best_move = genmove(B, turn_board, time_limit_val);
+    // Inverser les deux premiers caractères avec les deux derniers
+    //if (best_move.size() >= 4) {
+    //    std::swap(best_move[0], best_move[2]);
+    //    std::swap(best_move[1], best_move[3]);
+    //}
+    
+    printf("%s\n", best_move.c_str());
     
     return 0;
 }

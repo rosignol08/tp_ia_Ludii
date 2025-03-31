@@ -183,7 +183,7 @@ public class BreakthroughMCTSPlayer extends AI
             System.getProperty("user.dir") + "/" + mcts_player_str,
             boardStr,
             turn,
-            Double.toString(maxTime * 0.9)  // Utiliser 90% du temps maximal pour permettre le retour
+            Double.toString(maxTime * 0.95)  // Utiliser 90% du temps maximal pour permettre le retour
         );
         
         processBuilder.redirectErrorStream(false);
