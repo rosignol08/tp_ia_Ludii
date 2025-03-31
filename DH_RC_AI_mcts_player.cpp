@@ -35,6 +35,11 @@
 #define BLACK 2  // '@'
 #define LOG_ACTIVE 0
 
+// Constantes pour MCTS - Modifiées
+#define C_PUCT 1.0  // Facteur d'exploration ajusté
+#define MAX_SIMULATION_MOVES 150  // Augmenté de 100
+#define CAPTURE_BIAS 0.8  // Probabilité de préférer les captures en simulation
+
 // Structure pour les mouvements
 struct Move {
     int from;  // Position de départ
@@ -65,9 +70,6 @@ void print_legal_moves(const std::vector<Move>& moves, int rows, int cols) {
                 convert_move_to_string(moves[i], rows, cols).c_str());
     }
 }
-
-// Constantes pour MCTS
-#define C_PUCT 1.41  // Facteur d'exploration
 
 // Classe noeud pour MCTS
 class MCTSNode {
@@ -142,10 +144,31 @@ public:
             print_legal_moves(untried_moves, rows, cols);
         }
         
+        // Trie les mouvements - priorité aux captures et aux mouvements vers l'avant
+        if (!untried_moves.empty()) {
+            std::sort(untried_moves.begin(), untried_moves.end(), 
+                [this](const Move& a, const Move& b) {
+                    bool a_is_capture = (board[a.to] != EMPTY);
+                    bool b_is_capture = (board[b.to] != EMPTY);
+                    
+                    if (a_is_capture != b_is_capture) {
+                        return a_is_capture > b_is_capture;  // Captures en premier
+                    }
+                    
+                    // Ensuite, priorité aux progrès vers l'avant
+                    int a_progress = (player == WHITE) ? (a.from - a.to) : (a.to - a.from);
+                    int b_progress = (player == WHITE) ? (b.from - b.to) : (b.to - b.from);
+                    return a_progress > b_progress;
+                });
+        }
+        
         // Mélange les mouvements pour diversifier l'exploration
-        std::random_device rd;
-        std::mt19937 g(rd());
-        std::shuffle(untried_moves.begin(), untried_moves.end(), g);
+        // Ne mélange qu'une partie des mouvements pour maintenir la priorisation
+        if (untried_moves.size() > 3) {
+            std::random_device rd;
+            std::mt19937 g(rd());
+            std::shuffle(untried_moves.begin() + 2, untried_moves.end(), g);
+        }
     }
 
     // Vérifie si l'état est terminal
@@ -214,6 +237,12 @@ public:
             // Calcul du score UCT
             double exploitation = child->value_sum / child->visit_count;
             double exploration = C_PUCT * sqrt(log(visit_count) / child->visit_count);
+            
+            // Inverse le terme d'exploitation pour le tour de l'adversaire
+            if (child->player != player) {
+                exploitation = 1.0 - exploitation;
+            }
+            
             double score = exploitation + exploration;
             
             if (score > best_score) {
@@ -236,6 +265,11 @@ public:
 
 
     MCTSNode* expand() {
+        // Progressive widening - ne pas étendre trop de nœuds
+        if (!children.empty() && children.size() > 3 * sqrt(visit_count)) {
+            return select_best_child();
+        }
+        
         if (untried_moves.empty()) return nullptr;
         
         // Prend un mouvement non essayé
@@ -262,7 +296,7 @@ public:
         int sim_player = player;
         
         // Pour éviter les boucles infinies
-        int max_moves = 100; 
+        int max_moves = MAX_SIMULATION_MOVES; 
         int move_count = 0;
         
         // Simule des coups aléatoires jusqu'à la fin de la partie
@@ -284,8 +318,41 @@ public:
                 return (sim_player == WHITE) ? BLACK : WHITE;
             }
             
-            // Choix aléatoire d'un mouvement
-            int random_index = rand() % legal_moves.size();
+            // Choix d'un mouvement avec préférence pour les captures et avancées
+            int random_index = 0;
+            if (legal_moves.size() > 1) {
+                // Identifie les mouvements de capture
+                std::vector<int> capture_indices;
+                std::vector<int> forward_indices;
+                
+                for (size_t i = 0; i < legal_moves.size(); i++) {
+                    bool is_capture = (sim_board[legal_moves[i].to] != EMPTY);
+                    bool is_forward;
+                    
+                    if (sim_player == WHITE) {
+                        is_forward = legal_moves[i].to < legal_moves[i].from; // Blanc monte (indice diminue)
+                    } else {
+                        is_forward = legal_moves[i].to > legal_moves[i].from; // Noir descend (indice augmente)
+                    }
+                    
+                    if (is_capture) {
+                        capture_indices.push_back(i);
+                    } else if (is_forward) {
+                        forward_indices.push_back(i);
+                    }
+                }
+                
+                // Avec une probabilité CAPTURE_BIAS, sélectionne une capture si disponible,
+                // sinon sélectionne un mouvement vers l'avant si disponible
+                if (!capture_indices.empty() && ((double)rand() / RAND_MAX) < CAPTURE_BIAS) {
+                    random_index = capture_indices[rand() % capture_indices.size()];
+                } else if (!forward_indices.empty() && ((double)rand() / RAND_MAX) < CAPTURE_BIAS) {
+                    random_index = forward_indices[rand() % forward_indices.size()];
+                } else {
+                    random_index = rand() % legal_moves.size();
+                }
+            }
+            
             Move random_move = legal_moves[random_index];
             
             // Applique le mouvement
@@ -296,9 +363,8 @@ public:
             sim_player = (sim_player == WHITE) ? BLACK : WHITE;
         }
         
-        // En cas de dépassement du nombre maximal de coups, on privilégie le joueur blanc
-        // car ses pions sont plus proches de leur objectif dans la position initiale
-        return WHITE;
+        // Si nombre maximal de coups atteint, c'est un match nul
+        return EMPTY;
     }
 
     // Met à jour les statistiques du noeud
@@ -308,7 +374,7 @@ public:
         // Mise à jour de la valeur selon le gagnant
         if (winner == player) {
             value_sum += 1.0;
-        } else if (winner != WHITE && winner != BLACK) {
+        } else if (winner == EMPTY) {
             value_sum += 0.5;  // Match nul (rare dans Breakthrough)
         }
     }
@@ -386,6 +452,31 @@ public:
                 }
             }
         }
+        
+        // Trie les mouvements pour prioriser les captures et les mouvements vers l'avant
+        if (!legal_moves.empty()) {
+            std::sort(legal_moves.begin(), legal_moves.end(), 
+                [board, player](const Move& a, const Move& b) {
+                    bool a_is_capture = (board[a.to] != EMPTY);
+                    bool b_is_capture = (board[b.to] != EMPTY);
+                    
+                    if (a_is_capture != b_is_capture) {
+                        return a_is_capture > b_is_capture;  // Captures en premier
+                    }
+                    
+                    // Ensuite, priorité aux progrès vers l'avant
+                    int a_progress = (player == WHITE) ? (a.from - a.to) : (a.to - a.from);
+                    int b_progress = (player == WHITE) ? (b.from - b.to) : (b.to - b.from);
+                    return a_progress > b_progress;
+                });
+            
+            // Ajoute un peu d'aléatoire pour la variété
+            if (legal_moves.size() > 3) {
+                std::random_device rd;
+                std::mt19937 g(rd());
+                std::shuffle(legal_moves.begin() + 2, legal_moves.end(), g);
+            }
+        }
     }
 };
 
@@ -440,9 +531,48 @@ void apply_move_to_board(int* board, const Move& move) {
     board[move.from] = EMPTY;
 }
 
+bool check_for_immediate_win(int* board, int player, int rows, int cols, std::string& winning_move) {
+    std::vector<Move> legal_moves;
+    MCTSNode::get_legal_moves_for_state(board, player, rows, cols, legal_moves);
+    
+    for (const Move& move : legal_moves) {
+        // Sauvegarde l'état du plateau
+        int piece_from = board[move.from];
+        int piece_to = board[move.to];
+        
+        // Applique temporairement le mouvement
+        board[move.to] = piece_from;
+        board[move.from] = EMPTY;
+        
+        // Vérifie la victoire
+        int winner = EMPTY;
+        bool is_winner = MCTSNode::is_terminal_state(board, rows, cols, winner) && winner == player;
+        
+        // Rétablit l'état initial du plateau
+        board[move.from] = piece_from;
+        board[move.to] = piece_to;
+        
+        if (is_winner) {
+            winning_move = convert_move_to_string(move, rows, cols);
+            return true;
+        }
+    }
+    
+    return false;
+}
+
 // Fonction principale MCTS
 std::string mcts_genmove(int* board, int player, int rows, int cols, double max_time) {
     auto start_time = std::chrono::steady_clock::now();
+    
+    // Vérifie d'abord s'il y a des coups gagnants immédiats
+    std::string winning_move;
+    if (check_for_immediate_win(board, player, rows, cols, winning_move)) {
+        if (LOG_ACTIVE) {
+            fprintf(stderr, "Coup gagnant immédiat trouvé : %s\n", winning_move.c_str());
+        }
+        return winning_move;
+    }
     
     // Crée le noeud racine
     MCTSNode root(board, player, rows, cols);
@@ -462,14 +592,25 @@ std::string mcts_genmove(int* board, int player, int rows, int cols, double max_
     
     int iterations = 0;
     
+    // Vérification du temps adaptative
+    int time_check_interval = 10;
+    
     // Exécute MCTS jusqu'à épuisement du temps
     int max_iterations = 100000;  // Limite le nombre d'itérations pour éviter les boucles infinies
     while (iterations < max_iterations) {
-        // Vérification périodique du temps
-        if (iterations % 10 == 0) {
+        // Vérification périodique du temps (adaptative)
+        if (iterations % time_check_interval == 0) {
             auto current_time = std::chrono::steady_clock::now();
             double elapsed = std::chrono::duration<double>(current_time - start_time).count();
+            
             if (elapsed >= max_time * 0.95) break; // 95% du temps pour éviter les dépassements
+            
+            // Met à jour l'intervalle de vérification (vérifie moins souvent avec plus d'itérations)
+            if (iterations > 1000) {
+                time_check_interval = 100;
+            } else if (iterations > 100) {
+                time_check_interval = 20;
+            }
         }
         
         // Sélection: descend dans l'arbre en choisissant les meilleurs noeuds
