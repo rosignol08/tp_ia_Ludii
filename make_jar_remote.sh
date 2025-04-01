@@ -6,9 +6,9 @@ if [ ! -f ${LUDII_JAR_FILE} ];then
   echo "Ludii jar file is missing" ;
   exit 0 ;
 fi
-javac -cp ${LUDII_JAR_FILE} TicTacTocRemotePlayer.java ;
+javac -cp ${LUDII_JAR_FILE} BreakthroughIDSPlayer.java ;
 if [ ! -d "ttt" ];then
   mkdir ttt ;
 fi
-mv TicTacTocRemotePlayer.class ttt/ ;
-jar cf TicTacTocPlayer.jar ttt/TicTacTocRemotePlayer.class ;
+mv BreakthroughIDSPlayer.class breakthrough/ ;
+jar cf BreakthroughIDSPlayer.jar breakthrough/BreakthroughIDSPlayer.class ;
