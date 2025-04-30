@@ -1,3 +1,5 @@
+# IA Gagnante de la promo L3 informatique Paris 8, 2025.
+
 # IA Ludii Interface - TicTacToe Demo
 *n@up8.edu 2025*
 
